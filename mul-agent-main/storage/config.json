@@ -1,0 +1,15 @@
+{
+  "provider": "minimax",
+  "minimax": {
+    "api_key": "sk-cp-IrwmJMIVDMD03-26TNverfDh0IWljsBWuLTUrqNGKskIAAs6Hf3OONJ1LY8N0UufAbQFmnwpvw2m4-13xbM9TWTJhhQdyQqFtRTRSVFvY80l73mc5rSI0WM",
+    "base_url": "https://api.minimaxi.com/anthropic"
+  },
+  "model": {
+    "default": "MiniMax-M2.5",
+    "fallback": []
+  },
+  "settings": {
+    "temperature": 0.7,
+    "max_tokens": 4096
+  }
+}

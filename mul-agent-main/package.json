@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "mul-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-agent collaboration system",
+  "keywords": [
+    "agent",
+    "ai",
+    "llm",
+    "multi-agent"
+  ],
+  "homepage": "https://github.com/your-org/mul-agent#readme",
+  "bugs": {
+    "url": "https://github.com/your-org/mul-agent/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/mul-agent.git"
+  },
+  "license": "MIT",
+  "author": "your-org",
+  "type": "module",
+  "main": "dist/index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "dist/",
+    "docs/",
+    "mul_agent/",
+    "skills/"
+  ],
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "dev": "vite",
+    "api": "npx tsx src/api/server.ts",
+    "api:dev": "tsx src/api/server.ts",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "lint:ci": "oxlint --format=github",
+    "format": "oxfmt write ui/**/*.ts ui/**/*.tsx",
+    "format:check": "oxfmt check ui/**/*.ts ui/**/*.tsx",
+    "format:write": "oxfmt write ui/**/*.ts ui/**/*.tsx",
+    "check": "pnpm lint && pnpm format:check",
+    "typecheck": "tsc -b --noEmit",
+    "clean": "rm -rf dist node_modules/.cache"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "oxfmt": "latest",
+    "oxlint": "latest",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "pnpm@10.11.0"
+}

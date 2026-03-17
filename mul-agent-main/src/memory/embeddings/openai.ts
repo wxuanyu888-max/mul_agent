@@ -1,0 +1,98 @@
+/**
+ * OpenAI Embedding Provider
+ *
+ * Implementation for OpenAI's embedding API.
+ */
+
+import type { EmbeddingProvider } from '../types.js';
+import { sanitizeAndNormalizeEmbedding, getDefaultEmbeddingModel } from './base.js';
+
+export interface OpenAIEmbeddingConfig {
+  apiKey?: string;
+  baseURL?: string;
+  model?: string;
+  maxRetries?: number;
+}
+
+export interface OpenAIEmbeddingClient {
+  config: OpenAIEmbeddingConfig;
+  embed: (text: string) => Promise<number[]>;
+  embedBatch: (texts: string[]) => Promise<number[][]>;
+}
+
+/**
+ * Create OpenAI embedding provider
+ */
+export function createOpenAIEmbeddingProvider(config: OpenAIEmbeddingConfig): {
+  provider: EmbeddingProvider;
+  client: OpenAIEmbeddingClient;
+} {
+  const model = config.model || getDefaultEmbeddingModel('openai');
+  const baseURL = config.baseURL || 'https://api.openai.com/v1';
+  const apiKey = config.apiKey || process.env.OPENAI_API_KEY;
+
+  const client: OpenAIEmbeddingClient = {
+    config,
+    embed: async (text: string): Promise<number[]> => {
+      const response = await fetch(`${baseURL}/embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
+        },
+        body: JSON.stringify({
+          model,
+          input: text,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`OpenAI embedding error: ${response.status} - ${error}`);
+      }
+
+      const data = await response.json() as {
+        data: Array<{ embedding: number[] }>;
+      };
+
+      return sanitizeAndNormalizeEmbedding(data.data[0]?.embedding || []);
+    },
+    embedBatch: async (texts: string[]): Promise<number[][]> => {
+      if (texts.length === 0) return [];
+
+      const response = await fetch(`${baseURL}/embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
+        },
+        body: JSON.stringify({
+          model,
+          input: texts,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`OpenAI embedding error: ${response.status} - ${error}`);
+      }
+
+      const data = await response.json() as {
+        data: Array<{ embedding: number[] }>;
+      };
+
+      // Sort by index to maintain order
+      const sorted = [...data.data].sort((a, b) => a.index - b.index);
+      return sorted.map((item) => sanitizeAndNormalizeEmbedding(item.embedding));
+    },
+  };
+
+  const provider: EmbeddingProvider = {
+    id: 'openai',
+    model,
+    embedQuery: client.embed.bind(client),
+    embedBatch: client.embedBatch.bind(client),
+  };
+
+  return { provider, client };
+}

@@ -1,0 +1,79 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Python build
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+.venv
+venv/
+ENV/
+
+# Logs
+*.log
+
+# ===== STORAGE - Runtime data =====
+storage/memory/
+storage/conversations/
+storage/logs/
+storage/network/queue/
+storage/stream_states/
+storage/agent_states/
+storage/token_usage/
+storage/observability/
+
+# ===== WANG - Agent Config =====
+wang/agent-team/*/*.json
+wang/token_usage/*.json
+
+# ===== BUILD & NODE =====
+ui/node_modules/
+ui/dist/
+ui/.vite/
+ui/test-results/
+ui/playwright-report/
+ui/*.tsbuildinfo
+ui/*.js
+ui/*.d.ts
+!ui/postcss.config.js
+!ui/tailwind.config.js
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+*.tsbuildinfo
+
+# ===== OTHER PROJECTS =====
+openclaw/
+
+# Scripts
+scripts/*.pyc
+scripts/__pycache__/
