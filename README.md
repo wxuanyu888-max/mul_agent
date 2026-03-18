@@ -44,11 +44,8 @@ cp .env.example .env
 # 2. 配置 LLM API 密钥（必须）
 # 编辑 .env 文件，填入你的 API 密钥（百度千帆 / Anthropic / MiniMax）
 
-# 3. 安装依赖
+# 3. 安装依赖并启动
 pnpm install
-pnpm add -wD vite tsx
-
-# 4. 启动前端 + 后端（分开运行）
 pnpm dev          # 前端: http://localhost:5173
 pnpm api:dev      # 后端: http://localhost:8080
 ```
