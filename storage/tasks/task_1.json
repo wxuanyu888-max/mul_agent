@@ -1,0 +1,11 @@
+{
+  "id": 1,
+  "subject": "Write unit tests",
+  "description": "Write tests for auth module",
+  "status": "in_progress",
+  "blockedBy": [],
+  "blocks": [],
+  "owner": "autonomous",
+  "createdAt": 1773797866738,
+  "updatedAt": 1773797866826
+}

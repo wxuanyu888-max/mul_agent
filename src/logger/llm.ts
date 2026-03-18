@@ -118,7 +118,8 @@ export async function queryLlmLogs(options: LlmLogQueryOptions = {}): Promise<Ll
 
   try {
     const entries = await fs.readdir(logsDir);
-    const logFiles = entries.filter((f) => f.endsWith('.jsonl')).sort();
+    // 按日期倒序排序（最新的文件优先），确保 limit 较小时也能获取最新日志
+    const logFiles = entries.filter((f) => f.endsWith('.jsonl')).sort().reverse();
 
     const results: LlmCallLog[] = [];
 

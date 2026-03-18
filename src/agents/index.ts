@@ -61,8 +61,13 @@ export {
   compactMessages,
   estimateMessageTokens,
   needsCompaction,
+  needsAutoCompact,
+  microCompact,
+  autoCompact,
+  manualCompact,
+  createCompactionContext,
 } from './compaction.js';
-export type { CompactionConfig } from './compaction.js';
+export type { CompactionConfig, CompactionContext } from './compaction.js';
 
 // 配置加载
 export {
@@ -90,6 +95,19 @@ export type { AgentLoopConfig, AgentLoopResult, ToolCall } from './loop.js';
 // Subagent 子智能体
 export { runSubagent, listSubagents, killSubagent } from './subagent.js';
 export type { SubagentConfig, SubagentResult } from './subagent.js';
+
+// Teammate 队友智能体 (s09)
+export {
+  getTeammateManager,
+  spawnTeammate,
+  shutdownTeammate,
+  listTeammates,
+  getTeammateStatus,
+  sendToTeammate,
+  broadcastToTeammates,
+  checkTeammateInbox,
+} from './teammate.js';
+export type { TeammateStatus, TeammateConfig, TeammateInfo } from './teammate.js';
 
 // 重试机制
 export {

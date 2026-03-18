@@ -6,6 +6,17 @@ export * from "./types";
 // Task tool (for subagents)
 export { createTaskTool, isTaskTool } from "./task.js";
 
+// Task System tools (task graph)
+export {
+  createTaskCreateTool,
+  createTaskUpdateTool,
+  createTaskListTool,
+  createTaskGetTool,
+} from "./tasks/index.js";
+
+// Compact tool (context compression)
+export { createCompactTool } from "./compact.js";
+
 // Web tools
 export { createWebSearchTool, createWebFetchTool } from "./web/index.js";
 
@@ -52,14 +63,35 @@ export {
   createLsTool,
 } from "./file/index.js";
 
-// Bash tools (exec, process)
+// Bash tools (exec, process, background)
 export {
   createExecTool,
   createProcessTool,
+  createBackgroundRunTool,
+  createBackgroundCheckTool,
+  createBackgroundListTool,
+  createBackgroundKillTool,
 } from "./bash/index.js";
+
+// Autonomous tools (s11)
+export {
+  createClaimTaskTool,
+  createTeamListTool,
+} from "../agents/autonomous.js";
+
+// Teammate tools (s09)
+export {
+  createTeammateSpawnTool,
+  createTeammateSendTool,
+  createTeammateInboxTool,
+  createTeammateBroadcastTool,
+  createTeammateListTool,
+} from "./teammate/index.js";
 
 // 工具注册表 - 默认加载的工具
 import { createTaskTool } from "./task.js";
+import { createTaskCreateTool, createTaskUpdateTool, createTaskListTool, createTaskGetTool } from "./tasks/index.js";
+import { createCompactTool } from "./compact.js";
 import { createWebSearchTool, createWebFetchTool } from "./web/index.js";
 import { createMemorySearchTool, createMemoryGetTool } from "./memory/index.js";
 import {
@@ -99,7 +131,23 @@ import {
 import {
   createExecTool,
   createProcessTool,
+  createBackgroundRunTool,
+  createBackgroundCheckTool,
+  createBackgroundListTool,
+  createBackgroundKillTool,
 } from "./bash/index.js";
+
+// Autonomous tools (s11)
+import { createClaimTaskTool, createTeamListTool } from "../agents/autonomous.js";
+
+// Teammate tools (s09)
+import {
+  createTeammateSpawnTool,
+  createTeammateSendTool,
+  createTeammateInboxTool,
+  createTeammateBroadcastTool,
+  createTeammateListTool,
+} from "./teammate/index.js";
 
 export interface ToolOptions {
   sessionKey?: string;
@@ -115,6 +163,13 @@ export function createDefaultTools(options?: ToolOptions) {
   const tools = [
     // Task (for delegating to subagents)
     createTaskTool(),
+    // Task System (task graph)
+    createTaskCreateTool(),
+    createTaskUpdateTool(),
+    createTaskListTool(),
+    createTaskGetTool(),
+    // Compact (context compression)
+    createCompactTool(),
     // Web
     createWebSearchTool(),
     createWebFetchTool(),
@@ -151,6 +206,20 @@ export function createDefaultTools(options?: ToolOptions) {
     // Bash tools
     createExecTool(),
     createProcessTool(),
+    // Background tools (s08)
+    createBackgroundRunTool(),
+    createBackgroundCheckTool(),
+    createBackgroundListTool(),
+    createBackgroundKillTool(),
+    // Autonomous tools (s11)
+    createClaimTaskTool(),
+    createTeamListTool(),
+    // Teammate tools (s09)
+    createTeammateSpawnTool(),
+    createTeammateSendTool(),
+    createTeammateInboxTool(),
+    createTeammateBroadcastTool(),
+    createTeammateListTool(),
   ];
 
   return tools;
@@ -176,8 +245,15 @@ export function createMinimalTools(options?: ToolOptions) {
  * 工具名称映射
  */
 export const TOOL_DESCRIPTIONS: Record<string, string> = {
-  // Task tool
+  // Task tool (for subagents)
   task: "Spawn a subagent with fresh context to handle a subtask",
+  // Task System tools
+  task_create: "Create a new task in the task graph",
+  task_update: "Update a task (status, dependencies, details)",
+  task_list: "List all tasks with optional status filter",
+  task_get: "Get detailed information about a specific task",
+  // Compact tool
+  compact: "Manually trigger context compaction to reduce token usage",
   // Web tools
   web_search: "Search the web for information",
   web_fetch: "Fetch and extract content from a URL",
@@ -209,4 +285,18 @@ export const TOOL_DESCRIPTIONS: Record<string, string> = {
   // Bash tools
   exec: "Execute a shell command",
   process: "Manage background processes",
+  // Background tools (s08)
+  background_run: "Run command in background, results injected before next LLM call",
+  background_check: "Check status of a background task",
+  background_list: "List all background tasks",
+  background_kill: "Kill a running background task",
+  // Autonomous tools (s11)
+  claim_task: "Claim an unassigned task from the task board",
+  team_list: "List all team members and their status",
+  // Teammate tools (s09)
+  teammate_spawn: "Create a new teammate agent with a specific role",
+  teammate_send: "Send a message to a specific teammate",
+  teammate_inbox: "Read and clear a teammate's inbox",
+  teammate_broadcast: "Broadcast a message to all teammates",
+  teammate_list: "List all teammates and their status",
 };

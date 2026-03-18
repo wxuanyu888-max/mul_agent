@@ -7,6 +7,11 @@
  * 3. 执行工具
  * 4. 将结果加入上下文
  * 5. 循环直到完成
+ *
+ * 压缩策略（三层）：
+ * 1. micro_compact: 每次 LLM 调用前，将旧的 tool result 替换为占位符
+ * 2. auto_compact: token 超过阈值时，保存完整对话到磁盘，让 LLM 做摘要
+ * 3. manual compact: 手动调用 compact 工具触发同样的摘要机制
  */
 
 import { getLLMClient, type LLMRequest, type LLMResponse } from './llm.js';
@@ -14,6 +19,17 @@ import { buildSystemPrompt, type BuildContext, type ToolInfo } from './prompt/in
 import { createDefaultTools } from '../tools/index.js';
 import type { Message, ToolResult as AgentToolResult } from './types.js';
 import { errorResult, type JsonToolResult, type ToolResult } from '../tools/types.js';
+import {
+  microCompact,
+  autoCompact,
+  manualCompact,
+  needsAutoCompact,
+  estimateMessageTokens,
+  createCompactionContext,
+  type CompactionContext,
+  type CompactionConfig,
+} from './compaction.js';
+import { getBackgroundManager, type BackgroundNotification } from './background.js';
 
 /**
  * 工具调用
@@ -46,6 +62,10 @@ export interface AgentLoopConfig {
   onLlmCall?: (messages: LLMRequest['messages'], systemPrompt: string) => void;
   /** LLM 响应后回调 */
   onLlmResponse?: (response: LLMResponse) => void;
+  /** 压缩配置 */
+  compaction?: CompactionConfig;
+  /** 手动触发压缩的回调 */
+  onManualCompact?: (messages: any[]) => Promise<void>;
 }
 
 /**
@@ -90,6 +110,7 @@ interface RegisteredTool {
 export class AgentLoop {
   private tools: Map<string, RegisteredTool> = new Map();
   private config: Required<AgentLoopConfig>;
+  private compactionContext: CompactionContext;
 
   constructor(config: AgentLoopConfig = {}) {
     this.config = {
@@ -102,7 +123,10 @@ export class AgentLoop {
       onToolExecute: config.onToolExecute ?? (() => {}),
       onLlmCall: config.onLlmCall ?? (() => {}),
       onLlmResponse: config.onLlmResponse ?? (() => {}),
+      compaction: config.compaction ?? {},
+      onManualCompact: config.onManualCompact ?? (async () => {}),
     };
+    this.compactionContext = createCompactionContext();
   }
 
   /**
@@ -127,6 +151,43 @@ export class AgentLoop {
   registerDefaultTools(): void {
     const defaultTools = createDefaultTools();
     this.registerTools(defaultTools as unknown as RegisteredTool[]);
+  }
+
+  /**
+   * s08: 注入后台任务通知
+   * 每次 LLM 调用前排空通知队列，将结果注入消息
+   */
+  private injectBackgroundNotifications(messages: LLMRequest['messages']): LLMRequest['messages'] {
+    const bg = getBackgroundManager();
+    const notifications = bg.drainNotifications();
+
+    if (notifications.length === 0) {
+      return messages;
+    }
+
+    console.log(`[Background] Injecting ${notifications.length} completed task(s)`);
+
+    // 构建通知文本
+    const notifText = notifications
+      .map((n) => {
+        const statusIcon = n.status === 'completed' ? '✓' : n.status === 'timeout' ? '⏱' : '✗';
+        return `[bg:${n.taskId}] ${statusIcon} ${n.status}\nOutput: ${n.output.substring(0, 2000)}${n.output.length > 2000 ? '...' : ''}${n.error ? `\nError: ${n.error}` : ''}`;
+      })
+      .join('\n\n');
+
+    // 注入到消息中
+    const injection: LLMRequest['messages'] = [
+      {
+        role: 'user',
+        content: `<background-results>\n${notifText}\n</background-results>`,
+      },
+      {
+        role: 'assistant',
+        content: 'Noted background results.',
+      },
+    ];
+
+    return [...messages, ...injection];
   }
 
   /**
@@ -167,11 +228,14 @@ export class AgentLoop {
   }): Promise<AgentLoopResult> {
     const { message, history = [] } = params;
 
+    // 重置压缩上下文
+    this.compactionContext = createCompactionContext();
+
     // 构建系统提示词（使用 PromptBuilder）
     const systemPrompt = this.buildPrompt();
 
     // 构建初始消息
-    const messages: LLMRequest['messages'] = [];
+    let messages: LLMRequest['messages'] = [];
 
     // 添加历史消息
     for (const msg of history) {
@@ -194,11 +258,36 @@ export class AgentLoop {
     let toolCallsCount = 0;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
+    const compactionConfig = this.config.compaction;
 
     try {
       // Agent 循环
       while (iterations < this.config.maxIterations) {
         iterations++;
+
+        // === Layer 1: micro_compact ===
+        // 每次 LLM 调用前，将旧的 tool result 替换为占位符
+        if (compactionConfig) {
+          const compactResult = microCompact(messages, compactionConfig, this.compactionContext);
+          messages = compactResult.messages;
+          this.compactionContext = compactResult.context;
+        }
+
+        // === Check: 是否需要 auto_compact ===
+        if (compactionConfig && needsAutoCompact(messages, compactionConfig.autoCompactThreshold ?? 50000)) {
+          console.log(`[Compaction] Token count ${estimateMessageTokens(messages)} exceeds threshold, performing auto_compact...`);
+
+          // === Layer 2: auto_compact ===
+          const autoCompactResult = await autoCompact(messages, compactionConfig, this.compactionContext);
+          messages = autoCompactResult.messages;
+          this.compactionContext = autoCompactResult.context;
+
+          console.log(`[Compaction] Auto-compact completed. Messages reduced from ${autoCompactResult.messages.length} to ${messages.length}`);
+        }
+
+        // === s08: 注入后台任务通知 ===
+        // 每次 LLM 调用前排空通知队列
+        messages = this.injectBackgroundNotifications(messages);
 
         // 获取工具定义
         const tools = this.getToolDefinitions();
@@ -243,6 +332,28 @@ export class AgentLoop {
           // 执行工具调用
           for (const toolCall of toolCalls) {
             toolCallsCount++;
+
+            // === Layer 3: 手动压缩检查 ===
+            // 检查是否是 compact 工具调用
+            if (toolCall.name === 'compact') {
+              console.log('[Compaction] Manual compact triggered by tool call');
+
+              // 执行手动压缩
+              const manualResult = await manualCompact(messages, compactionConfig, this.compactionContext);
+              messages = manualResult.messages;
+              this.compactionContext = manualResult.context;
+
+              // 通知回调
+              await this.config.onManualCompact(messages);
+
+              // 添加确认消息
+              messages.push({
+                role: 'user',
+                content: 'Conversation has been compacted. Previous context has been summarized.',
+              });
+
+              continue;
+            }
 
             // 检查是否需要确认
             const confirmed = await this.config.onToolConfirm(toolCall);
@@ -311,6 +422,15 @@ export class AgentLoop {
         usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
       };
     }
+  }
+
+  /**
+   * 手动触发压缩
+   */
+  async triggerCompact(): Promise<void> {
+    // 这是一个外部调用压缩的方法
+    // 在实际使用中，消息需要从外部传入
+    console.log('[Compaction] Manual compact triggered externally');
   }
 
   /**
