@@ -103,14 +103,12 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
 
   useEffect(() => {
     loadAllUsage();
-
-    // 定时刷新，实现实时同步（每 30 秒刷新一次）
-    const interval = setInterval(() => {
-      loadAllUsage();
-    }, 30000);
-
-    return () => clearInterval(interval);
   }, []);
+
+  // 手动刷新
+  const handleRefresh = () => {
+    loadAllUsage();
+  };
 
   // 表 1 分页计算
   const table1Data = allUsage ? Object.entries(allUsage).sort(
@@ -218,10 +216,17 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
 
   return (
     <div className="p-4">
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           Token 使用统计
         </h2>
+        <button
+          onClick={handleRefresh}
+          disabled={loading}
+          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? '刷新中...' : '刷新'}
+        </button>
       </div>
 
       {error && (
@@ -246,10 +251,6 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
                   • 最后更新：{lastUpdated.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
               )}
-              <span className="text-xs text-green-600 dark:text-green-500 flex items-center gap-1">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                自动同步中
-              </span>
             </div>
           </div>
         </div>

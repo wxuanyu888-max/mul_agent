@@ -1,6 +1,6 @@
 {
   "sessionId": "session_1773817841488",
-  "updatedAt": 1773818673256,
+  "updatedAt": 1773821232545,
   "messages": [
     {
       "role": "user",
@@ -61,6 +61,26 @@
       "role": "assistant",
       "content": "现在是 **2026年3月18日 星期三 下午 3:24** 🕒",
       "timestamp": 1773818673256
+    },
+    {
+      "role": "user",
+      "content": "你有哪些skill",
+      "timestamp": 1773820905489
+    },
+    {
+      "role": "assistant",
+      "content": "根据系统配置，我目前有以下技能：\n\n## �技能列表\n\n### hello\n一个简单的示例技能，用于演示技能系统的工作方式。当你想要测试技能加载时可以使用它。\n\n---\n\n你可以尝试对我说 \"hello\" 来测试这个技能！😊\n\n如果你有其他需求，也可以直接告诉我，我会尽力帮你完成。",
+      "timestamp": 1773820905489
+    },
+    {
+      "role": "user",
+      "content": "你好",
+      "timestamp": 1773821232545
+    },
+    {
+      "role": "assistant",
+      "content": "你好！😊 有什么我可以帮你的吗？",
+      "timestamp": 1773821232545
     }
   ]
 }

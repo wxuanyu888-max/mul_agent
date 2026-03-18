@@ -347,22 +347,32 @@ function formatToolList(tools: ToolInfo[]): string {
 }
 
 /**
- * 格式化技能列表
+ * 格式化技能列表 - 渐进式披露，默认只显示 name, description, location
  */
 function formatSkills(skills: SkillInfo[]): string {
   if (skills.length === 0) {
     return ''; // 不显示技能部分
   }
 
+  // 默认只显示 name, description, location（渐进式披露）
   const skillList = skills
-    .map((s) => `- ${s.name}: ${s.description}`)
+    .map((s) => `- \`${s.name}\`: ${s.description} (location: ${s.location})`)
     .join('\n');
 
-  return `## Skills
-Before replying, check if a skill applies to the task.
+  return `## Skills (mandatory)
+<available_skills>
 ${skillList}
+</available_skills>
 
-If a skill applies, read and follow its instructions.`;
+Before replying: scan <available_skills> <description> entries.
+
+- If exactly one skill clearly applies: read its SKILL.md at <location> with \`read\`, then follow it.
+- If multiple could apply: choose the most specific one, then read/follow it.
+- If none clearly apply: do not read any SKILL.md.
+
+Constraints: never read more than one skill up front; only read after selecting.
+
+When a skill drives external API writes, assume rate limits: prefer fewer larger writes, avoid tight one-item loops, serialize bursts when possible, and respect 429/Retry-After.`;
 }
 
 /**

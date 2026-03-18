@@ -7,6 +7,7 @@ import { messageQueue } from '../../message/index.js';
 import { chatWithContext } from '../../agents/llm.js';
 import { AgentLoop } from '../../agents/loop.js';
 import type { Message } from '../../agents/types.js';
+import { querySessions, getSession, deleteSession } from '../../session/manager.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -161,50 +162,89 @@ export function createChatRouter(): Router {
   });
 
   // GET /chat/sessions
-  router.get('/chat/sessions', (req: Request, res: Response) => {
+  router.get('/chat/sessions', async (req: Request, res: Response) => {
     const agent_id = req.query.agent_id as string;
+    const limit = parseInt(req.query.limit as string) || 20;
 
-    const sessions = Object.entries(messagesStore).map(([session_id, msgs]) => ({
-      session_id,
-      agent_id: agent_id || 'default',
-      created_at: new Date().toISOString(),
-      last_message_at: new Date().toISOString(),
-      message_count: msgs.length,
-      preview: msgs[0]?.content?.substring(0, 50) || '',
-      queue_status: messageQueue.getStatus(session_id)
-    }));
+    try {
+      // 使用真正的 session 管理器查询
+      const sessions = await querySessions({
+        parentId: agent_id,
+        limit,
+      });
 
-    res.json({ sessions });
+      // 转换为前端需要的格式
+      const sessionList = sessions.map((s) => ({
+        session_id: s.id,
+        agent_id: s.parentId || s.config?.runtime || 'default',
+        created_at: new Date(s.createdAt).toISOString(),
+        last_message_at: new Date(s.updatedAt).toISOString(),
+        message_count: 0, // 需要另外查询
+        preview: s.label || '',
+        first_message: s.label || '',
+      }));
+
+      res.json({ sessions: sessionList });
+    } catch (error) {
+      console.error('Failed to query sessions:', error);
+      res.json({ sessions: [] });
+    }
   });
 
   // GET /chat/session/:session_id
-  router.get('/chat/session/:session_id', (req: Request, res: Response) => {
+  router.get('/chat/session/:session_id', async (req: Request, res: Response) => {
     const session_id = req.params.session_id as string;
     const limit = parseInt(req.query.limit as string) || 100;
 
-    const messages = messagesStore[session_id]?.slice(-limit) || [];
-    const queueStatus = messageQueue.getStatus(session_id);
+    try {
+      // 使用真正的 session 管理器获取消息
+      const session = await getSession(session_id);
 
-    res.json({
-      session_id,
-      messages,
-      total: messages.length,
-      queue_status: queueStatus
-    });
+      if (!session) {
+        res.json({
+          session_id,
+          messages: [],
+          total: 0,
+        });
+        return;
+      }
+
+      // 从 session 中获取消息
+      const messages = (session.messages || []).slice(-limit);
+
+      res.json({
+        session_id,
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(m.timestamp).toISOString(),
+        })),
+        total: session.messages?.length || 0,
+      });
+    } catch (error) {
+      console.error('Failed to get session:', error);
+      res.json({
+        session_id,
+        messages: [],
+        total: 0,
+      });
+    }
   });
 
   // DELETE /chat/session/:session_id
-  router.delete('/chat/session/:session_id', (req: Request, res: Response) => {
+  router.delete('/chat/session/:session_id', async (req: Request, res: Response) => {
     const session_id = req.params.session_id as string;
 
-    if (messagesStore[session_id]) {
-      delete messagesStore[session_id];
+    try {
+      // 使用真正的 session 管理器删除
+      await deleteSession(session_id);
+      // 同时清空队列
+      messageQueue.clear(session_id);
+      res.json({ status: 'success', message: 'Session deleted' });
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      res.json({ status: 'error', message: 'Failed to delete session' });
     }
-
-    // 同时清空队列
-    messageQueue.clear(session_id);
-
-    res.json({ status: 'success', message: 'Session deleted' });
   });
 
   // SSE Stream endpoint for real-time chat

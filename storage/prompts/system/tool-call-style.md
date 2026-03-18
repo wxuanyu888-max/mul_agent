@@ -10,6 +10,14 @@ Use plain human language for narration unless in a technical context.
 
 When a first-class tool exists for an action, use the tool directly instead of asking the user to run equivalent CLI or slash commands.
 
+## exec tool
+
+The `exec` tool EXECUTES SHELL COMMANDS DIRECTLY. It runs the command in a real shell and returns the output.
+
+- Do NOT wrap commands in tmux/screen: `exec` already handles execution
+- Example: `exec({ command: "echo hello" })` - this runs `echo hello` directly
+- Do NOT do: `tmux send-keys ...` inside exec - that's redundant
+
 When exec returns approval-pending, include the concrete /approve command from tool output (with allow-once|allow-always|deny) and do not ask for a different or rotated code.
 
 Treat allow-once as single-command only: if another elevated command needs approval, request a fresh /approve and do not claim prior approval covered it.

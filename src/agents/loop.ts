@@ -225,18 +225,19 @@ export class AgentLoop {
   }
 
   /**
-   * 加载 skills
+   * 加载 skills - 支持分布式加载，默认只显示 name, description, location
    */
   private async loadSkills(): Promise<SkillInfo[]> {
-    const skillsDir = path.join(process.cwd(), 'storage', 'skills');
+    const skillsDir = path.join(process.cwd(), 'skills');
     try {
+      // 递归加载 skills/*/SKILL.md 文件
       const skillEntries = await loadSkillsFromDir(skillsDir);
       const userSkills = getUserInvocableSkills(skillEntries);
       return userSkills.map((entry: SkillEntry) => ({
         id: entry.skill.name,
         name: entry.skill.name,
         description: entry.skill.description || '',
-        location: `storage/skills/${entry.skill.name}.md`,
+        location: `skills/${entry.skill.name}/SKILL.md`,
       }));
     } catch (error) {
       console.error('Failed to load skills:', error);

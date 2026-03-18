@@ -162,9 +162,7 @@ export function createSkillFromContent(filePath: string, content: string): Skill
   };
 }
 
-/**
- * 从目录加载所有 skills
- */
+// Load skills from skills/*/SKILL.md directories
 export async function loadSkillsFromDir(dirPath: string): Promise<SkillEntry[]> {
   const skills: SkillEntry[] = [];
 
@@ -172,6 +170,31 @@ export async function loadSkillsFromDir(dirPath: string): Promise<SkillEntry[]> 
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
     for (const entry of entries) {
+      // 如果是目录，递归查找 SKILL.md
+      if (entry.isDirectory()) {
+        const skillDir = path.join(dirPath, entry.name);
+        const skillFilePath = path.join(skillDir, 'SKILL.md');
+        try {
+          const stat = await fs.stat(skillFilePath);
+          if (stat.isFile()) {
+            const content = await fs.readFile(skillFilePath, 'utf-8');
+            if (content.startsWith('---')) {
+              const skill = createSkillFromContent(skillFilePath, content);
+              const frontmatter = parseFrontmatter(content);
+              const skillEntry: SkillEntry = {
+                skill,
+                frontmatter,
+                metadata: resolveOpenClawMetadata(frontmatter),
+                invocation: resolveSkillInvocationPolicy(frontmatter),
+              };
+              skills.push(skillEntry);
+            }
+          }
+        } catch {}
+        continue;
+      }
+
+      // 如果是文件，直接处理
       if (!entry.isFile()) continue;
 
       const ext = path.extname(entry.name);
