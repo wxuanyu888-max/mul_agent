@@ -2,7 +2,7 @@
 
 Before replying: scan <available_skills> <description> entries.
 
-- If exactly one skill clearly applies: read its SKILL.md at <location>, then follow it.
+- If exactly one skill clearly applies: read its SKILL.md at <location> with `read`, then follow it.
 - If multiple could apply: choose the most specific one, then read/follow it.
 - If none clearly apply: do not read any SKILL.md.
 

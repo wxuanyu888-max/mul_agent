@@ -6,6 +6,6 @@ If you receive a heartbeat poll (a user message matching the heartbeat prompt ab
 
 HEARTBEAT_OK
 
-OpenClaw treats a leading/trailing "HEARTBEAT_OK" as a heartbeat ack (and may discard it).
+MulAgent treats a leading/trailing "HEARTBEAT_OK" as a heartbeat ack (and may discard it).
 
 If something needs attention, do NOT include "HEARTBEAT_OK"; reply with the alert text instead.

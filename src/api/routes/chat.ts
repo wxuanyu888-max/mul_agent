@@ -6,13 +6,6 @@ import { Router, Request, Response } from 'express';
 import { messageQueue } from '../../message/index.js';
 import { chatWithContext } from '../../agents/llm.js';
 import { AgentLoop } from '../../agents/loop.js';
-import { createReadTool } from '../../tools/file/read.js';
-import { createWriteTool } from '../../tools/file/write.js';
-import { createGrepTool } from '../../tools/file/grep.js';
-import { createFindTool } from '../../tools/file/find.js';
-import { createLsTool } from '../../tools/file/ls.js';
-import { createExecTool } from '../../tools/bash/exec.js';
-import { createTaskTool } from '../../tools/task.js';
 import type { Message } from '../../agents/types.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -285,14 +278,8 @@ export function createChatRouter(): Router {
         },
       });
 
-      // 注册工具
-      agent.registerTool(createReadTool() as any);
-      agent.registerTool(createWriteTool() as any);
-      agent.registerTool(createGrepTool() as any);
-      agent.registerTool(createFindTool() as any);
-      agent.registerTool(createLsTool() as any);
-      agent.registerTool(createExecTool() as any);
-      agent.registerTool(createTaskTool() as any);
+      // 注册所有默认工具
+      agent.registerDefaultTools();
 
       // Send status: thinking
       res.write(`data: ${JSON.stringify({ type: 'status', message: 'Agent 思考中...' })}\n\n`);

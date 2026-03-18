@@ -15,7 +15,7 @@
  */
 
 import { getLLMClient, type LLMRequest, type LLMResponse } from './llm.js';
-import { buildSystemPrompt, type BuildContext, type ToolInfo } from './prompt/index.js';
+import { buildSystemPrompt, type BuildContext, type ToolInfo, type SkillInfo } from './prompt/index.js';
 import { createDefaultTools } from '../tools/index.js';
 import type { Message, ToolResult as AgentToolResult } from './types.js';
 import { errorResult, type JsonToolResult, type ToolResult } from '../tools/types.js';
@@ -30,6 +30,8 @@ import {
   type CompactionConfig,
 } from './compaction.js';
 import { getBackgroundManager, type BackgroundNotification } from './background.js';
+import { loadSkillsFromDir, getUserInvocableSkills, type SkillEntry } from '../skills/index.js';
+import path from 'node:path';
 
 /**
  * 工具调用
@@ -193,7 +195,7 @@ export class AgentLoop {
   /**
    * 构建系统提示词（复用 PromptBuilder）
    */
-  private buildPrompt(): string {
+  private async buildPrompt(): Promise<string> {
     // 将工具转换为 ToolInfo 格式
     const toolInfos: ToolInfo[] = [];
     for (const [name, tool] of this.tools) {
@@ -204,6 +206,9 @@ export class AgentLoop {
       });
     }
 
+    // 加载 skills
+    const skills = await this.loadSkills();
+
     // 构建上下文
     const context: BuildContext = {
       config: {
@@ -212,11 +217,31 @@ export class AgentLoop {
         promptMode: this.config.promptMode,
       },
       tools: toolInfos,
-      skills: [], // TODO: 可以从 skills 模块加载
+      skills: skills,
     };
 
     // 使用提示词 builder 构建系统提示词
     return buildSystemPrompt(context);
+  }
+
+  /**
+   * 加载 skills
+   */
+  private async loadSkills(): Promise<SkillInfo[]> {
+    const skillsDir = path.join(process.cwd(), 'storage', 'skills');
+    try {
+      const skillEntries = await loadSkillsFromDir(skillsDir);
+      const userSkills = getUserInvocableSkills(skillEntries);
+      return userSkills.map((entry: SkillEntry) => ({
+        id: entry.skill.name,
+        name: entry.skill.name,
+        description: entry.skill.description || '',
+        location: `storage/skills/${entry.skill.name}.md`,
+      }));
+    } catch (error) {
+      console.error('Failed to load skills:', error);
+      return [];
+    }
   }
 
   /**
@@ -232,7 +257,7 @@ export class AgentLoop {
     this.compactionContext = createCompactionContext();
 
     // 构建系统提示词（使用 PromptBuilder）
-    const systemPrompt = this.buildPrompt();
+    const systemPrompt = await this.buildPrompt();
 
     // 构建初始消息
     let messages: LLMRequest['messages'] = [];

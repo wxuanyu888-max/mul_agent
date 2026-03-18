@@ -38,16 +38,28 @@ pip install -e .
 ### 启动项目
 
 ```bash
-# 1. 复制环境配置
+# 1. 安装依赖
+pnpm install
+
+# 2. 复制环境配置
 cp .env.example .env
 
-# 2. 配置 LLM API 密钥（必须）
-# 编辑 .env 文件，填入你的 API 密钥（百度千帆 / Anthropic / MiniMax）
+# 3. 配置 LLM API 密钥（必须）
+# 编辑 .env，填入 ANTHROPIC_AUTH_TOKEN 或 BAIDU_API_KEY
 
-# 3. 安装依赖并启动
-pnpm install
-pnpm dev          # 前端: http://localhost:5173
+# 4. 启动前端 + 后端（两个终端）
+pnpm dev          # 前端: http://localhost:5182
 pnpm api:dev      # 后端: http://localhost:8080
+```
+
+或者使用 tmux 同时启动：
+```bash
+tmux new -s dev
+pnpm dev
+# Ctrl+B 松开再按 D 退出会话
+
+tmux new -s api
+pnpm api:dev
 ```
 
 ## Documentation

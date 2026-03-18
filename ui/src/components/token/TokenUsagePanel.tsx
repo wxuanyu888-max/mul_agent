@@ -122,11 +122,12 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
     table1Page * TABLE1_PAGE_SIZE
   );
 
-  // 表 2 分页计算 - 简化，不计算总页数
+  // 表 2 分页计算
   const table2PageData = allLogs.slice(
     (table2Page - 1) * TABLE2_PAGE_SIZE,
     table2Page * TABLE2_PAGE_SIZE
   );
+  const table2TotalPages = Math.ceil(allLogs.length / TABLE2_PAGE_SIZE);
 
   // 页码改变时的处理 - 滚回表格顶部
   const handleTable1PageChange = (newPage: number) => {
@@ -229,131 +230,12 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
         </div>
       )}
 
-      {/* 表 1：按 Agent 统计 */}
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          表 1：按 Agent 统计汇总
-          {table1Data.length > 0 && (
-            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-              （第 {table1Page}/{table1TotalPages} 页，共 {table1Data.length} 条记录）
-            </span>
-          )}
-        </h3>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-900">
-              <tr>
-                <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Agent ID</th>
-                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">输入 Token</th>
-                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">输出 Token</th>
-                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">总 Token</th>
-                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">调用次数</th>
-                <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">最后访问时间</th>
-              </tr>
-            </thead>
-            <tbody>
-              {table1PageData.length > 0 && table1PageData.map(([agentId, summary]) => (
-                <tr key={agentId} className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">{agentId}</td>
-                  <td className="text-right py-3 px-4 text-purple-600 dark:text-purple-400">
-                    {formatNumber((summary as TokenUsageSummary).input_tokens)}
-                  </td>
-                  <td className="text-right py-3 px-4 text-orange-600 dark:text-orange-400">
-                    {formatNumber((summary as TokenUsageSummary).output_tokens)}
-                  </td>
-                  <td className="text-right py-3 px-4 font-semibold text-blue-600 dark:text-blue-400">
-                    {formatNumber((summary as TokenUsageSummary).total_tokens)}
-                  </td>
-                  <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">
-                    {formatNumber((summary as TokenUsageSummary).access_count)}
-                  </td>
-                  <td className="text-left py-3 px-4 text-gray-500 dark:text-gray-400">
-                    {formatTime((summary as TokenUsageSummary).last_access_time)}
-                  </td>
-                </tr>
-              ))}
-              {table1Data.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    暂无数据
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            <tfoot className="bg-gray-100 dark:bg-gray-900/50">
-              <tr className="font-semibold">
-                <td className="py-3 px-4 text-gray-900 dark:text-white">合计</td>
-                <td className="text-right py-3 px-4 text-purple-600 dark:text-purple-400">
-                  {formatNumber(Object.values(allUsage || {}).reduce((sum, s) => sum + (s as TokenUsageSummary).input_tokens, 0))}
-                </td>
-                <td className="text-right py-3 px-4 text-orange-600 dark:text-orange-400">
-                  {formatNumber(Object.values(allUsage || {}).reduce((sum, s) => sum + (s as TokenUsageSummary).output_tokens, 0))}
-                </td>
-                <td className="text-right py-3 px-4 text-blue-600 dark:text-blue-400">
-                  {formatNumber(Object.values(allUsage || {}).reduce((sum, s) => sum + (s as TokenUsageSummary).total_tokens, 0))}
-                </td>
-                <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">
-                  {formatNumber(Object.values(allUsage || {}).reduce((sum, s) => sum + (s as TokenUsageSummary).access_count, 0))}
-                </td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        {/* 分页控件 - 表 1 */}
-        {table1TotalPages > 1 && (
-          <div className="flex items-center justify-between mt-3">
-            <button
-              onClick={() => handleTable1PageChange(table1Page - 1)}
-              disabled={table1Page === 1}
-              className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              上一页
-            </button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, table1TotalPages) }, (_, i) => {
-                let pageNum;
-                if (table1TotalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (table1Page <= 3) {
-                  pageNum = i + 1;
-                } else if (table1Page >= table1TotalPages - 2) {
-                  pageNum = table1TotalPages - 4 + i;
-                } else {
-                  pageNum = table1Page - 2 + i;
-                }
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => handleTable1PageChange(pageNum)}
-                    className={`w-8 h-8 text-sm rounded ${
-                      table1Page === pageNum
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => handleTable1PageChange(table1Page + 1)}
-              disabled={table1Page === table1TotalPages}
-              className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              下一页
-            </button>
-          </div>
-        )}
-      </div>
-
       {/* 表 2：LLM 调用明细表 */}
-      <div>
+      <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              表 2：LLM 调用明细
+              表 1：LLM 调用明细
             </h3>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -372,7 +254,7 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
           </div>
         </div>
         {/* 表格容器 - 固定高度，内部可滚动 */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-auto max-h-[calc(100vh-280px)]">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
               <tr>
@@ -579,10 +461,7 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
         </div>
         {/* 分页控件 - 表 2 - 始终显示分页控件 */}
         {allLogs.length > 0 && (
-          <div className="flex items-center justify-between mt-3">
-            <span className="text-xs text-gray-500">
-              记录数：{allLogs.length} (当前第 {table2Page} 页)
-            </span>
+          <div className="flex items-center justify-center gap-4 mt-3">
             <button
               onClick={() => handleTable2PageChange(table2Page - 1)}
               disabled={table2Page === 1}
@@ -591,30 +470,154 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
               上一页
             </button>
             <div className="flex items-center gap-1">
-              {Array.from({ length: 5 }, (_, i) => table2Page - 2 + i).filter(p => p >= 1).map((pageNum) => (
-                <button
-                  key={pageNum}
-                  onClick={() => handleTable2PageChange(pageNum)}
-                  className={`w-8 h-8 text-sm rounded ${
-                    table2Page === pageNum
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {pageNum}
-                </button>
-              ))}
+              {Array.from({ length: Math.min(5, table2TotalPages) }, (_, i) => {
+                let pageNum;
+                if (table2TotalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (table2Page <= 3) {
+                  pageNum = i + 1;
+                } else if (table2Page >= table2TotalPages - 2) {
+                  pageNum = table2TotalPages - 4 + i;
+                } else {
+                  pageNum = table2Page - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handleTable2PageChange(pageNum)}
+                    className={`w-8 h-8 text-sm rounded ${
+                      table2Page === pageNum
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
             </div>
             <button
-              onClick={() => {
-                const nextPage = table2Page + 1
-                if (nextPage * TABLE2_PAGE_SIZE > allLogs.length) {
-                  setTable2Page(1) // 循环到第一页
+              onClick={() => handleTable2PageChange(table2Page + 1)}
+              disabled={table2Page >= table2TotalPages}
+              className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              下一页
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 表 2：按 Agent 统计 */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          表 2：按 Agent 统计汇总
+          {table1Data.length > 0 && (
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+              （第 {table1Page}/{table1TotalPages} 页，共 {table1Data.length} 条记录）
+            </span>
+          )}
+        </h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Agent ID</th>
+                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">输入 Token</th>
+                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">输出 Token</th>
+                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">总 Token</th>
+                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">调用次数</th>
+                <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">最后访问时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {table1PageData.length > 0 && table1PageData.map(([agentId, summary]) => (
+                <tr key={agentId} className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">{agentId}</td>
+                  <td className="text-right py-3 px-4 text-purple-600 dark:text-purple-400">
+                    {formatNumber((summary as TokenUsageSummary).input_tokens)}
+                  </td>
+                  <td className="text-right py-3 px-4 text-orange-600 dark:text-orange-400">
+                    {formatNumber((summary as TokenUsageSummary).output_tokens)}
+                  </td>
+                  <td className="text-right py-3 px-4 font-semibold text-blue-600 dark:text-blue-400">
+                    {formatNumber((summary as TokenUsageSummary).total_tokens)}
+                  </td>
+                  <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">
+                    {formatNumber((summary as TokenUsageSummary).access_count)}
+                  </td>
+                  <td className="text-left py-3 px-4 text-gray-500 dark:text-gray-400">
+                    {formatTime((summary as TokenUsageSummary).last_access_time)}
+                  </td>
+                </tr>
+              ))}
+              {table1Data.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    暂无数据
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            <tfoot className="bg-gray-100 dark:bg-gray-900/50">
+              <tr className="font-semibold">
+                <td className="py-3 px-4 text-gray-900 dark:text-white">合计</td>
+                <td className="text-right py-3 px-4 text-purple-600 dark:text-purple-400">
+                  {formatNumber(Object.values(allUsage || {}).reduce((sum, s) => sum + (s as TokenUsageSummary).input_tokens, 0))}
+                </td>
+                <td className="text-right py-3 px-4 text-orange-600 dark:text-orange-400">
+                  {formatNumber(Object.values(allUsage || {}).reduce((sum, s) => sum + (s as TokenUsageSummary).output_tokens, 0))}
+                </td>
+                <td className="text-right py-3 px-4 text-blue-600 dark:text-blue-400">
+                  {formatNumber(Object.values(allUsage || {}).reduce((sum, s) => sum + (s as TokenUsageSummary).total_tokens, 0))}
+                </td>
+                <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">
+                  {formatNumber(Object.values(allUsage || {}).reduce((sum, s) => sum + (s as TokenUsageSummary).access_count, 0))}
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        {/* 分页控件 - 表 2 */}
+        {table1TotalPages > 1 && (
+          <div className="flex items-center justify-between mt-3">
+            <button
+              onClick={() => handleTable1PageChange(table1Page - 1)}
+              disabled={table1Page === 1}
+              className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              上一页
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, table1TotalPages) }, (_, i) => {
+                let pageNum;
+                if (table1TotalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (table1Page <= 3) {
+                  pageNum = i + 1;
+                } else if (table1Page >= table1TotalPages - 2) {
+                  pageNum = table1TotalPages - 4 + i;
                 } else {
-                  setTable2Page(nextPage)
+                  pageNum = table1Page - 2 + i;
                 }
-              }}
-              disabled={table2Page * TABLE2_PAGE_SIZE >= allLogs.length}
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handleTable1PageChange(pageNum)}
+                    className={`w-8 h-8 text-sm rounded ${
+                      table1Page === pageNum
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => handleTable1PageChange(table1Page + 1)}
+              disabled={table1Page === table1TotalPages}
               className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               下一页

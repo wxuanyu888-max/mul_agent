@@ -82,11 +82,14 @@
       "Bash(netstat -ano | findstr \"LISTENING\" | findstr \"7890 1080 10808 8080 1086 61626\")",
       "Bash(netstat -ano | findstr \"LISTENING\" | findstr \"789 108 808\")",
       "Bash(cmdkey /list 2>&1 | grep -i github)",
-      "Bash(cd \"D:/Resource/200-项目/220-计算机/220-005-mul_agent\" && mv mul-agent-main/* . && mv mul-agent-main/.* . 2>/dev/null; rmdir mul-agent-main && ls -la)"
+      "Bash(cd \"D:/Resource/200-项目/220-计算机/220-005-mul_agent\" && mv mul-agent-main/* . && mv mul-agent-main/.* . 2>/dev/null; rmdir mul-agent-main && ls -la)",
+      "mcp__chrome-devtools__list_pages",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__take_snapshot"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "pencil"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

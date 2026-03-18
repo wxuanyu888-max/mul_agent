@@ -18,6 +18,16 @@ export interface PromptBuilderConfig {
   userTimezone?: string;
   /** 文档路径 */
   docsPath?: string;
+  /** 所有者信息 */
+  ownerInfo?: string;
+  /** 当前时间 */
+  currentTime?: string;
+  /** 文档URL */
+  docsUrl?: string;
+  /** 语音配置 */
+  voiceConfig?: string;
+  /** 技能描述 */
+  skillDescriptions?: Record<string, string>;
 }
 
 /**

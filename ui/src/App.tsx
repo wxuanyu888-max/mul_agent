@@ -89,7 +89,7 @@ function App() {
         </div>
 
         {/* Content Area */}
-        <div className="h-[calc(100vh-8.5rem)] overflow-hidden">
+        <div className="h-[calc(100vh-8.5rem)] overflow-auto">
           {/* Chat - always mounted */}
           <div className={`h-full ${activeTab === 'chat' ? '' : 'hidden'}`}>
             <ChatPanel />

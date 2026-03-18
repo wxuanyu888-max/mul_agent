@@ -5,21 +5,19 @@
  */
 
 import { readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import process from 'node:process';
 
 import type {
   PromptBuilderConfig,
   BuildContext,
   ToolInfo,
   SkillInfo,
+  ContextInfo,
 } from './types.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// 提示词模板目录 (相对于项目根目录)
-const PROMPTS_DIR = join(__dirname, '../../storage/prompts');
+// 提示词模板目录 (使用 process.cwd() 获取项目根目录)
+const PROMPTS_DIR = join(process.cwd(), 'storage/prompts');
 
 /**
  * 提示词模板
@@ -157,7 +155,7 @@ For more information, consult the documentation.`,
  * 构建完整提示词
  */
 export function buildSystemPrompt(context: BuildContext): string {
-  const { config, tools, skills, runtime } = context;
+  const { config, tools, skills, runtime, context: ctx } = context;
   const mode = config.promptMode ?? 'full';
 
   // 加载模板
@@ -166,13 +164,134 @@ export function buildSystemPrompt(context: BuildContext): string {
   // 加载各模块
   const modules = loadAllModules(context);
 
+  // 构建动态变量
+  const dynamicVars = buildDynamicVariables(context);
+
   // 替换占位符
   return parseTemplate(template, {
     ...modules,
+    ...dynamicVars,
     tool_list: formatToolList(tools),
-    workspace: modules.workspace.replace('{{workspace}}', config.workspaceDir),
-    runtime_info: formatRuntimeInfo(runtime),
   });
+}
+
+/**
+ * 构建动态变量
+ */
+function buildDynamicVariables(context: BuildContext): Record<string, string> {
+  const { config, runtime, context: ctx } = context;
+
+  // 格式化时间
+  const timeInfo = config.currentTime || new Date().toLocaleString('zh-CN', {
+    timeZone: config.userTimezone || 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    weekday: 'long',
+  });
+
+  // 格式化工作目录相关变量
+  const workspaceVars = {
+    workspace_dir: config.workspaceDir,
+    workspace_guidance: 'You can read, write, and execute files in this directory.',
+    workspace_notes: '',
+  };
+
+  // 格式化沙箱相关变量
+  const sandboxVars = {
+    sandbox_info: 'Sandbox Environment',
+    sandbox_container_workspace: 'Container workspace is enabled.',
+    sandbox_workspace_access: 'You have full access to the container filesystem.',
+    sandbox_browser_info: 'Browser automation is available.',
+    sandbox_elevated_info: 'You have elevated privileges.',
+  };
+
+  // 格式化心跳变量
+  const heartbeatVars = {
+    heartbeat_prompt: 'If there is nothing that needs attention, reply exactly: HEARTBEAT_OK',
+  };
+
+  // 格式化模型别名变量
+  const modelAliasVars = {
+    model_alias_lines: '',
+  };
+
+  // 格式化消息变量
+  const messagingVars = {
+    message_channel_options: '',
+    message_tool_hints: '',
+    inline_buttons_hint: '',
+  };
+
+  // 格式化推理变量
+  const reasoningVars = {
+    reasoning_format_hint: '',
+    reasoning_level: 'off',
+  };
+
+  // 格式化回复标签变量
+  const replyTagVars = {
+    reply_tag_guidance: '',
+  };
+
+  // 格式化静默回复变量
+  const silentReplyVars = {
+    silent_reply_guidance: '',
+  };
+
+  // 格式化反应变量
+  const reactionVars = {
+    reaction_guidance: '',
+  };
+
+  // 格式化运行时信息
+  const runtimeInfo = formatRuntimeInfo(runtime);
+
+  // 格式化上下文文件
+  const contextFiles = formatContextFiles(ctx);
+
+  return {
+    // 核心变量
+    workspace: loadModule('workspace').replace('{{workspace}}', config.workspaceDir),
+    runtime_info: runtimeInfo,
+
+    // 工作目录变量
+    ...workspaceVars,
+
+    // 沙箱变量
+    ...sandboxVars,
+
+    // 心跳变量
+    ...heartbeatVars,
+
+    // 模型别名变量
+    ...modelAliasVars,
+
+    // 消息变量
+    ...messagingVars,
+
+    // 推理变量
+    ...reasoningVars,
+
+    // 回复标签变量
+    ...replyTagVars,
+
+    // 静默回复变量
+    ...silentReplyVars,
+
+    // 反应变量
+    ...reactionVars,
+
+    // 动态变量
+    owner_info: config.ownerInfo || 'Owner: User',
+    time_info: timeInfo,
+    context_files: contextFiles,
+    docs_url: config.docsUrl || config.docsPath || '',
+    voice: config.voiceConfig || '',
+  };
 }
 
 /**
@@ -265,6 +384,21 @@ function formatRuntimeInfo(runtime?: { channel?: string; capabilities?: string[]
   }
 
   return parts.join('\n');
+}
+
+/**
+ * 格式化上下文文件
+ */
+function formatContextFiles(context?: ContextInfo): string {
+  if (!context?.files || context.files.length === 0) {
+    return '';
+  }
+
+  const fileList = context.files
+    .map((f) => `### ${f.path}\n\`\`\`\n${f.content.slice(0, 1000)}\n\`\`\``)
+    .join('\n\n');
+
+  return `## Context Files\n${fileList}`;
 }
 
 /**

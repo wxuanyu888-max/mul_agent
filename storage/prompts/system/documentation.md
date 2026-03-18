@@ -1,9 +1,7 @@
 # Documentation
 
-OpenClaw docs: {{docs_path}}
-Mirror: https://docs.openclaw.ai
-Source: https://github.com/openclaw/openclaw
-Community: https://discord.com/invite/clawd
-Find new skills: https://clawhub.com
-For OpenClaw behavior, commands, config, or architecture: consult local docs first.
-When diagnosing issues, run `openclaw status` yourself when possible; only ask the user if you lack access (e.g., sandboxed).
+MulAgent docs: {{docs_path}}
+
+For MulAgent behavior, commands, config, or architecture: consult local docs first.
+
+When diagnosing issues, run status commands yourself when possible; only ask the user if you lack access.
