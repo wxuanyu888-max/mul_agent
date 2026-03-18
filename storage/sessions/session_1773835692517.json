@@ -1,0 +1,16 @@
+{
+  "sessionId": "session_1773835692517",
+  "updatedAt": 1773835852354,
+  "messages": [
+    {
+      "role": "user",
+      "content": "请执行 `ls -la /Users/agent/Desktop/` 命令",
+      "timestamp": 1773835852354
+    },
+    {
+      "role": "assistant",
+      "content": "`/Users/agent/Desktop/` 目录内容如下：\n\n| 文件名 | 类型 |\n|--------|------|\n| `~$宇的简历-v2.docx` | 文件 (临时) |\n| `~$宇的简历-v3完整版.docx` | 文件 (临时) |\n| `2周强度ai-coding的想法.md` | 文件 |\n| `fix_resume_full.py` | 文件 |\n| `fix_resume.py` | 文件 |\n| `在openclaw.docx` | 文件 |\n| `王轩宇的简历-v2.docx` | 文件 |\n| `王轩宇的简历-v3完整版.docx` | 文件 |\n| `王轩宇的简历-修改版.docx` | 文件 |\n\n目录中共包含 **9 个文件**，其中有 2 个是 Word 临时文件（以 `~$` 开头），主要内容包括：\n- 3 个简历文档版本\n- 2 个 Python 修复脚本\n- 1 个 Markdown 笔记\n- 1 个其他 Word 文档",
+      "timestamp": 1773835852354
+    }
+  ]
+}

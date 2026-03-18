@@ -36,7 +36,12 @@ export function createTaskTool(): TaskTool {
   return {
     label: 'Task',
     name: 'task',
-    description: 'Spawn a subagent with fresh context to handle a subtask. Use this to delegate work to a separate agent with its own clean message history.',
+    description: `Task management - Create and manage subtasks. Available actions:
+- task: Create and run a new subtask
+- task_create: Create a new task
+- task_update: Update task status/details
+- task_list: List all tasks
+- task_get: Get task details by ID`,
     parameters: {
       type: 'object',
       properties: {

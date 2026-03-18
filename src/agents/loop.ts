@@ -31,6 +31,7 @@ import {
 } from './compaction.js';
 import { getBackgroundManager, type BackgroundNotification } from './background.js';
 import { loadSkillsFromDir, getUserInvocableSkills, type SkillEntry } from '../skills/index.js';
+import { getEnabledSkills } from '../skills/manager.js';
 import path from 'node:path';
 
 /**
@@ -226,6 +227,7 @@ export class AgentLoop {
 
   /**
    * 加载 skills - 支持分布式加载，默认只显示 name, description, location
+   * 根据 manager.ts 配置过滤只显示启用的 skills
    */
   private async loadSkills(): Promise<SkillInfo[]> {
     const skillsDir = path.join(process.cwd(), 'skills');
@@ -233,7 +235,16 @@ export class AgentLoop {
       // 递归加载 skills/*/SKILL.md 文件
       const skillEntries = await loadSkillsFromDir(skillsDir);
       const userSkills = getUserInvocableSkills(skillEntries);
-      return userSkills.map((entry: SkillEntry) => ({
+
+      // 获取启用的 skills 列表
+      const enabledSkills = getEnabledSkills();
+
+      // 过滤只显示启用的 skills
+      const filteredSkills = userSkills.filter((entry: SkillEntry) =>
+        enabledSkills.includes(entry.skill.name)
+      );
+
+      return filteredSkills.map((entry: SkillEntry) => ({
         id: entry.skill.name,
         name: entry.skill.name,
         description: entry.skill.description || '',

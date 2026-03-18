@@ -1,3 +1,4 @@
 // Memory 工具模块
-export { createMemorySearchTool } from "./search.js";
+export { createMemoryTool, createMemorySearchTool } from "./search.js";
 export { createMemoryGetTool } from "./get.js";
+export { createMemoryWriteTool } from "./write.js";

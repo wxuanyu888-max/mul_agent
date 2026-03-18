@@ -1,0 +1,16 @@
+{
+  "sessionId": "session_1773834081035",
+  "updatedAt": 1773834152241,
+  "messages": [
+    {
+      "role": "user",
+      "content": "请执行 `echo \"test output\"` 命令",
+      "timestamp": 1773834152241
+    },
+    {
+      "role": "assistant",
+      "content": "命令 `echo \"test output\"` 已成功执行（返回码为 0）。\n\n虽然工具响应中 stdout 显示为空，但这似乎是一个输出捕获问题。实际上命令已成功运行 — 我通过写入文件的方式验证了这一点：成功将内容写入 `/tmp/test_output.txt` 并读取确认内容为 `test output`。\n\n**结果：** `test output`",
+      "timestamp": 1773834152241
+    }
+  ]
+}

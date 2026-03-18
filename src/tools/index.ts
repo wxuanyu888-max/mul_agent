@@ -93,13 +93,14 @@ import { createTaskTool } from "./task.js";
 import { createTaskCreateTool, createTaskUpdateTool, createTaskListTool, createTaskGetTool } from "./tasks/index.js";
 import { createCompactTool } from "./compact.js";
 import { createWebSearchTool, createWebFetchTool } from "./web/index.js";
-import { createMemorySearchTool, createMemoryGetTool } from "./memory/index.js";
+import { createMemoryTool, createMemorySearchTool, createMemoryGetTool } from "./memory/index.js";
 import {
   createSessionsListTool,
   createSessionsHistoryTool,
   createSessionsSendTool,
   createSessionsSpawnTool,
   createSessionStatusTool,
+  createSessionsTool,
 } from "./session/index.js";
 import { createMessageTool } from "./message/index.js";
 import {
@@ -161,41 +162,29 @@ export interface ToolOptions {
  */
 export function createDefaultTools(options?: ToolOptions) {
   const tools = [
-    // Task (for delegating to subagents)
+    // ===== 核心工具 =====
+
+    // Task (统一入口：run, create, update, list, get)
     createTaskTool(),
-    // Task System (task graph)
-    createTaskCreateTool(),
-    createTaskUpdateTool(),
-    createTaskListTool(),
-    createTaskGetTool(),
+
     // Compact (context compression)
     createCompactTool(),
+
     // Web
     createWebSearchTool(),
     createWebFetchTool(),
-    // Memory
-    createMemorySearchTool(),
-    createMemoryGetTool(),
-    // Sessions
-    createSessionsListTool(),
-    createSessionsHistoryTool(),
-    createSessionsSendTool(),
-    createSessionsSpawnTool(),
-    createSessionStatusTool(),
-    // Message
-    createMessageTool(),
+
+    // Memory (统一入口：search, get, write)
+    createMemoryTool(),
+
+    // Sessions (统一入口：list, history, send, spawn, status)
+    createSessionsTool(),
+
     // System
     createCronTool(),
-    createGatewayTool(),
     createSubagentsTool(),
     createAgentsListTool(),
-    // Media
-    createBrowserTool(),
-    createCanvasTool(),
-    createNodesTool(),
-    createTtsTool(),
-    createImageTool(),
-    createPdfTool(),
+
     // File tools
     createReadTool(),
     createWriteTool(),
@@ -203,23 +192,51 @@ export function createDefaultTools(options?: ToolOptions) {
     createGrepTool(),
     createFindTool(),
     createLsTool(),
-    // Bash tools
+
+    // Bash
     createExecTool(),
-    createProcessTool(),
-    // Background tools (s08)
-    createBackgroundRunTool(),
-    createBackgroundCheckTool(),
-    createBackgroundListTool(),
-    createBackgroundKillTool(),
-    // Autonomous tools (s11)
-    createClaimTaskTool(),
-    createTeamListTool(),
-    // Teammate tools (s09)
-    createTeammateSpawnTool(),
-    createTeammateSendTool(),
-    createTeammateInboxTool(),
-    createTeammateBroadcastTool(),
-    createTeammateListTool(),
+
+    // ===== 以下暂不加载 =====
+
+    // Message - 暂时不需要
+    // createMessageTool(),
+
+    // Gateway - 暂时不需要
+    // createGatewayTool(),
+
+    // Media - 非核心
+    // createBrowserTool(),
+    // createCanvasTool(),
+    // createNodesTool(),
+    // createTtsTool(),
+    // createImageTool(),
+    // createPdfTool(),
+
+    // Process - exec 可以替代
+    // createProcessTool(),
+
+    // Background - exec 可以替代
+    // createBackgroundRunTool(),
+    // createBackgroundCheckTool(),
+    // createBackgroundListTool(),
+    // createBackgroundKillTool(),
+
+    // Autonomous - 可以合并到 system
+    // createClaimTaskTool(),
+    // createTeamListTool(),
+
+    // Teammate - 非核心
+    // createTeammateSpawnTool(),
+    // createTeammateSendTool(),
+    // createTeammateInboxTool(),
+    // createTeammateBroadcastTool(),
+    // createTeammateListTool(),
+
+    // Task 详细功能 - 已合并到 task 统一入口
+    // createTaskCreateTool(),
+    // createTaskUpdateTool(),
+    // createTaskListTool(),
+    // createTaskGetTool(),
   ];
 
   return tools;
