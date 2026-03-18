@@ -8,13 +8,15 @@ import type {
   EmbeddingProvider,
   EmbeddingProviderResult,
   EmbeddingProviderOptions,
-} from './types.js';
+} from '../types.js';
+
+export type { EmbeddingProviderOptions } from '../types.js';
 
 export { createOpenAIEmbeddingProvider, type OpenAIEmbeddingConfig, type OpenAIEmbeddingClient } from './openai.js';
 export { createVoyageEmbeddingProvider, type VoyageEmbeddingConfig, type VoyageEmbeddingClient } from './voyage.js';
 export { createGeminiEmbeddingProvider, type GeminiEmbeddingConfig, type GeminiEmbeddingClient } from './gemini.js';
 export { createMistralEmbeddingProvider, type MistralEmbeddingConfig, type MistralEmbeddingClient } from './mistral.js';
-export { createOllamaEmbeddingProvider, listOllamaModels, type OllamaEmbeddingConfig, type OllraEmbeddingClient } from './ollama.js';
+export { createOllamaEmbeddingProvider, listOllamaModels, type OllamaEmbeddingConfig, type OllamaEmbeddingClient } from './ollama.js';
 
 export { sanitizeAndNormalizeEmbedding, getDefaultEmbeddingModel, DEFAULT_EMBEDDING_MODELS } from './base.js';
 
@@ -63,7 +65,7 @@ async function tryCreateProvider(
         const { provider: p } = await import('./openai.js').then((m) =>
           m.createOpenAIEmbeddingProvider({
             apiKey: options.remote?.apiKey as string | undefined,
-            baseURL: options.remote?.baseURL,
+            baseURL: options.remote?.baseUrl,
             model: options.model,
           })
         );
@@ -82,7 +84,7 @@ async function tryCreateProvider(
         const { provider: p } = await import('./voyage.js').then((m) =>
           m.createVoyageEmbeddingProvider({
             apiKey: options.remote?.apiKey as string | undefined,
-            baseURL: options.remote?.baseURL,
+            baseURL: options.remote?.baseUrl,
             model: options.model,
           })
         );
@@ -119,7 +121,7 @@ async function tryCreateProvider(
         const { provider: p } = await import('./mistral.js').then((m) =>
           m.createMistralEmbeddingProvider({
             apiKey: options.remote?.apiKey as string | undefined,
-            baseURL: options.remote?.baseURL,
+            baseURL: options.remote?.baseUrl,
             model: options.model,
           })
         );
@@ -138,7 +140,7 @@ async function tryCreateProvider(
       try {
         const { provider: p } = await import('./ollama.js').then((m) =>
           m.createOllamaEmbeddingProvider({
-            baseURL: options.remote?.baseURL,
+            baseURL: options.remote?.baseUrl,
             model: options.local?.modelPath || 'nomic-embed-text',
           })
         );

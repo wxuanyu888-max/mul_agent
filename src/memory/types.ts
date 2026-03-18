@@ -123,6 +123,21 @@ export type EmbeddingProviderResult = {
   providerUnavailableReason?: string;
 };
 
+export type EmbeddingProviderOptions = {
+  provider: EmbeddingProviderRequest;
+  model?: string;
+  remote?: {
+    baseUrl?: string;
+    apiKey?: string;
+    headers?: Record<string, string>;
+  };
+  fallback?: EmbeddingProviderFallback;
+  local?: {
+    modelPath?: string;
+    modelCacheDir?: string;
+  };
+};
+
 // ============================================================================
 // Hybrid Search Types
 // ============================================================================

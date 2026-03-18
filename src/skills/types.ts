@@ -30,6 +30,8 @@ export interface SkillFrontmatter {
   os?: string[];
   requires?: SkillRequirement[];
   install?: SkillInstallSpec[];
+  commands?: Array<{ name: string; description?: string; prompt?: string } | string>;
+  tools?: Array<{ name: string; description?: string }>;
 }
 
 /**

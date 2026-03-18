@@ -259,6 +259,6 @@ export async function mergeHybridResults(params: {
     endLine: r.endLine,
     score: r.score,
     snippet: r.snippet,
-    source: r.source,
+    source: r.source as 'memory' | 'sessions',
   }));
 }

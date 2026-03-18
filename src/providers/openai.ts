@@ -2,8 +2,8 @@
  * OpenAI LLM Provider
  */
 
-import { BaseProvider } from '../base.js';
-import type { LLMRequest, LLMResponse, LLMProviderConfig } from '../types.js';
+import { BaseProvider } from './base.js';
+import type { LLMRequest, LLMResponse, LLMProviderConfig } from './types.js';
 
 export class OpenAIProvider extends BaseProvider {
   id = 'openai';

@@ -20,6 +20,7 @@ import type {
   MemorySource,
   MemorySearchConfig,
   EmbeddingProvider,
+  HybridSource,
 } from './types.js';
 import { MemoryDatabase } from './database.js';
 import {
@@ -284,6 +285,7 @@ export class MemoryIndexManager implements MemorySearchManager {
     force?: boolean;
     progress?: (update: MemorySyncProgressUpdate) => void;
   }): Promise<void> {
+    const { progress } = params ?? {};
     const sources = this.config.sources || ['memory', 'sessions'];
     const extraPaths = this.config.extraPaths || [];
 

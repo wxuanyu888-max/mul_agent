@@ -160,19 +160,21 @@ export class MemoryDatabase {
     indexedAt: number;
   }): void {
     if (this.vectorEnabled && chunk.embedding) {
-      this.db.run(
+      const stmt = this.db.prepare(
         `INSERT OR REPLACE INTO ${VECTOR_TABLE}
          (id, path, start_line, end_line, content, embedding, source, indexed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [chunk.id, chunk.path, chunk.startLine, chunk.endLine, chunk.content, chunk.embedding, chunk.source, chunk.indexedAt]
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       );
+      // Convert embedding to Float64Array for SQLite
+      const embeddingBuffer = Buffer.from(new Float64Array(chunk.embedding).buffer);
+      stmt.run(chunk.id, chunk.path, chunk.startLine, chunk.endLine, chunk.content, embeddingBuffer, chunk.source, chunk.indexedAt);
     } else {
-      this.db.run(
+      const stmt = this.db.prepare(
         `INSERT OR REPLACE INTO ${VECTOR_TABLE}
          (id, path, start_line, end_line, content, source, indexed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [chunk.id, chunk.path, chunk.startLine, chunk.endLine, chunk.content, chunk.source, chunk.indexedAt]
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       );
+      stmt.run(chunk.id, chunk.path, chunk.startLine, chunk.endLine, chunk.content, chunk.source, chunk.indexedAt);
     }
   }
 
@@ -193,7 +195,16 @@ export class MemoryDatabase {
     }
 
     try {
-      const results = this.db.all<Array<{
+      const stmt = this.db.prepare(
+        `SELECT id, path, start_line, end_line, content, source,
+                vec_distance_cosine(embedding, ?) as distance
+         FROM ${VECTOR_TABLE}
+         ORDER BY distance ASC
+         LIMIT ?`
+      );
+      // Convert embedding to Float64Array for SQLite
+      const embeddingBuffer = Buffer.from(new Float64Array(embedding).buffer);
+      const results = stmt.all(embeddingBuffer, limit) as Array<{
         id: string;
         path: string;
         start_line: number;
@@ -201,14 +212,7 @@ export class MemoryDatabase {
         content: string;
         source: string;
         distance: number;
-      }>>(
-        `SELECT id, path, start_line, end_line, content, source,
-                vec_distance_cosine(embedding, ?) as distance
-         FROM ${VECTOR_TABLE}
-         ORDER BY distance ASC
-         LIMIT ?`,
-        [embedding, limit]
-      );
+      }>;
 
       return results.map((r) => ({
         id: r.id,
@@ -237,7 +241,16 @@ export class MemoryDatabase {
     rank: number;
   }> {
     try {
-      const results = this.db.all<Array<{
+      const stmt = this.db.prepare(
+        `SELECT c.id, c.path, c.start_line, c.end_line, c.content, c.source,
+                f.rank
+         FROM ${FTS_TABLE} f
+         JOIN ${VECTOR_TABLE} c ON f.id = c.id
+         WHERE ${FTS_TABLE} MATCH ?
+         ORDER BY rank
+         LIMIT ?`
+      );
+      const results = stmt.all(query, limit) as Array<{
         id: string;
         path: string;
         start_line: number;
@@ -245,16 +258,7 @@ export class MemoryDatabase {
         content: string;
         source: string;
         rank: number;
-      }>>(
-        `SELECT c.id, c.path, c.start_line, c.end_line, c.content, c.source,
-                f.rank
-         FROM ${FTS_TABLE} f
-         JOIN ${VECTOR_TABLE} c ON f.id = c.id
-         WHERE ${FTS_TABLE} MATCH ?
-         ORDER BY rank
-         LIMIT ?`,
-        [query, limit]
-      );
+      }>;
 
       return results.map((r) => ({
         id: r.id,
@@ -284,20 +288,20 @@ export class MemoryDatabase {
     rank: number;
   }> {
     const searchPattern = `%${query}%`;
-    const results = this.db.all<Array<{
+    const stmt = this.db.prepare(
+      `SELECT id, path, start_line, end_line, content, source
+       FROM ${VECTOR_TABLE}
+       WHERE content LIKE ?
+       LIMIT ?`
+    );
+    const results = stmt.all(searchPattern, limit) as Array<{
       id: string;
       path: string;
       start_line: number;
       end_line: number;
       content: string;
       source: string;
-    }>>(
-      `SELECT id, path, start_line, end_line, content, source
-       FROM ${VECTOR_TABLE}
-       WHERE content LIKE ?
-       LIMIT ?`,
-      [searchPattern, limit]
-    );
+    }>;
 
     return results.map((r, i) => ({
       id: r.id,
@@ -314,10 +318,10 @@ export class MemoryDatabase {
    * Get embedding cache
    */
   getCachedEmbedding(contentHash: string): number[] | null {
-    const result = this.db.get<{ embedding: number[] } | null>(
-      `SELECT embedding FROM ${EMBEDDING_CACHE_TABLE} WHERE hash = ?`,
-      [contentHash]
+    const stmt = this.db.prepare(
+      `SELECT embedding FROM ${EMBEDDING_CACHE_TABLE} WHERE hash = ?`
     );
+    const result = stmt.get(contentHash) as unknown as { embedding: number[] } | undefined;
     return result?.embedding || null;
   }
 
@@ -325,12 +329,14 @@ export class MemoryDatabase {
    * Cache embedding
    */
   cacheEmbedding(contentHash: string, content: string, embedding: number[]): void {
-    this.db.run(
+    const stmt = this.db.prepare(
       `INSERT OR REPLACE INTO ${EMBEDDING_CACHE_TABLE}
        (hash, content, embedding, created_at)
-       VALUES (?, ?, ?, ?)`,
-      [contentHash, content, embedding, Date.now()]
+       VALUES (?, ?, ?, ?)`
     );
+    // Convert embedding to Float64Array for SQLite
+    const embeddingBuffer = Buffer.from(new Float64Array(embedding).buffer);
+    stmt.run(contentHash, content, embeddingBuffer, Date.now());
   }
 
   /**
@@ -345,7 +351,10 @@ export class MemoryDatabase {
     source: string;
     indexedAt: number;
   } | null {
-    const result = this.db.get<{
+    const stmt = this.db.prepare(
+      `SELECT * FROM ${VECTOR_TABLE} WHERE id = ?`
+    );
+    const result = stmt.get(id) as {
       id: string;
       path: string;
       start_line: number;
@@ -353,10 +362,7 @@ export class MemoryDatabase {
       content: string;
       source: string;
       indexed_at: number;
-    } | null>(
-      `SELECT * FROM ${VECTOR_TABLE} WHERE id = ?`,
-      [id]
-    );
+    } | undefined;
 
     if (!result) return null;
 
@@ -383,7 +389,10 @@ export class MemoryDatabase {
     source: string;
     indexedAt: number;
   }> {
-    const results = this.db.all<Array<{
+    const stmt = this.db.prepare(
+      `SELECT * FROM ${VECTOR_TABLE} WHERE path LIKE ?`
+    );
+    const results = stmt.all(pathPattern) as Array<{
       id: string;
       path: string;
       start_line: number;
@@ -391,10 +400,7 @@ export class MemoryDatabase {
       content: string;
       source: string;
       indexed_at: number;
-    }>>(
-      `SELECT * FROM ${VECTOR_TABLE} WHERE path LIKE ?`,
-      [pathPattern]
-    );
+    }>;
 
     return results.map((r) => ({
       id: r.id,
@@ -411,14 +417,16 @@ export class MemoryDatabase {
    * Delete chunk by ID
    */
   deleteChunk(id: string): void {
-    this.db.run(`DELETE FROM ${VECTOR_TABLE} WHERE id = ?`, [id]);
+    const stmt = this.db.prepare(`DELETE FROM ${VECTOR_TABLE} WHERE id = ?`);
+    stmt.run(id);
   }
 
   /**
    * Delete chunks by path
    */
   deleteChunksByPath(pathPattern: string): void {
-    this.db.run(`DELETE FROM ${VECTOR_TABLE} WHERE path LIKE ?`, [pathPattern]);
+    const stmt = this.db.prepare(`DELETE FROM ${VECTOR_TABLE} WHERE path LIKE ?`);
+    stmt.run(pathPattern);
   }
 
   /**
@@ -433,7 +441,8 @@ export class MemoryDatabase {
     source: string;
     indexedAt: number;
   }> {
-    const results = this.db.all<Array<{
+    const stmt = this.db.prepare(`SELECT * FROM ${VECTOR_TABLE}`);
+    const results = stmt.all() as Array<{
       id: string;
       path: string;
       start_line: number;
@@ -441,7 +450,7 @@ export class MemoryDatabase {
       content: string;
       source: string;
       indexed_at: number;
-    }>>(`SELECT * FROM ${VECTOR_TABLE}`);
+    }>;
 
     return results.map((r) => ({
       id: r.id,
@@ -458,7 +467,8 @@ export class MemoryDatabase {
    * Get chunk count
    */
   getChunkCount(): number {
-    const result = this.db.get<{ count: number }>(`SELECT COUNT(*) as count FROM ${VECTOR_TABLE}`);
+    const stmt = this.db.prepare(`SELECT COUNT(*) as count FROM ${VECTOR_TABLE}`);
+    const result = stmt.get() as { count: number } | undefined;
     return result?.count || 0;
   }
 
@@ -466,9 +476,10 @@ export class MemoryDatabase {
    * Get source counts
    */
   getSourceCounts(): Array<{ source: string; count: number }> {
-    const results = this.db.all<Array<{ source: string; count: number }>>(
+    const stmt = this.db.prepare(
       `SELECT source, COUNT(*) as count FROM ${VECTOR_TABLE} GROUP BY source`
     );
+    const results = stmt.all() as Array<{ source: string; count: number }>;
     return results;
   }
 

@@ -7,8 +7,8 @@
 import type {
   SessionEntry,
   Message,
-  AgentState,
 } from './types.js';
+import { AgentState } from './types.js';
 
 /**
  * 会话存储接口

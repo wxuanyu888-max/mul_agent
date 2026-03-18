@@ -4,7 +4,7 @@
  * Base types and utilities for embedding providers.
  */
 
-import type { EmbeddingProvider, EmbeddingProviderResult } from './types.js';
+import type { EmbeddingProvider, EmbeddingProviderResult } from '../types.js';
 
 /**
  * Create a sanitized and normalized embedding vector

@@ -8,13 +8,13 @@ import { callGateway } from './gateway.js';
 import type {
   AgentRunConfig,
   AgentRunResult,
-  AgentState,
   Message,
   ReplyPayload,
   QueueSettings,
   FollowupRun,
   Usage,
 } from './types.js';
+import { AgentState } from './types.js';
 import { readLatestAssistantReply } from './step.js';
 
 /**

@@ -2,8 +2,8 @@
  * Anthropic LLM Provider
  */
 
-import { BaseProvider } from '../base.js';
-import type { LLMRequest, LLMResponse, LLMProviderConfig } from '../types.js';
+import { BaseProvider } from './base.js';
+import type { LLMRequest, LLMResponse, LLMProviderConfig } from './types.js';
 
 export class AnthropicProvider extends BaseProvider {
   id = 'anthropic';

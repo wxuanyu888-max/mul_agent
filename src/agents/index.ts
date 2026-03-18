@@ -8,6 +8,12 @@
  * - 心跳机制
  */
 
+// 导入所有需要重新导出的函数
+import { createAgentRunner } from './runner.js';
+import { createHeartbeat } from './heartbeat.js';
+import { createDefaultToolRegistry } from './tools.js';
+import { createGateway } from './gateway.js';
+
 // 类型导出
 export * from './types.js';
 
@@ -15,7 +21,7 @@ export * from './types.js';
 export { SessionManager, InMemorySessionStore, createSessionManager } from './session.js';
 export type { SessionStore } from './session.js';
 
-export { AgentRunner, createAgentRunner } from './runner.js';
+export { AgentRunner } from './runner.js';
 export type { AgentRunnerOptions } from './runner.js';
 
 export { runAgentStep, readLatestAssistantReply, stripToolMessages } from './step.js';
@@ -25,13 +31,11 @@ export {
   ToolRegistry,
   ToolLoop,
   BashToolExecutor,
-  createDefaultToolRegistry,
 } from './tools.js';
 export type { ToolExecutor, ToolLoopConfig, ToolLoopResult } from './tools.js';
 
 export {
   Heartbeat,
-  createHeartbeat,
   parseHeartbeatResponse,
   HEARTBEAT_OK,
 } from './heartbeat.js';
@@ -42,9 +46,11 @@ export {
   getGlobalGateway,
   setGlobalGateway,
   callGateway,
-  createGateway,
 } from './gateway.js';
 export type { GatewayConfig } from './gateway.js';
+
+// 重新导出函数
+export { createAgentRunner, createHeartbeat, createDefaultToolRegistry, createGateway };
 
 // 提示词构建
 export { buildSystemPrompt, buildHeartbeatPrompt } from './prompt/builder.js';
@@ -76,6 +82,14 @@ export type { AgentConfig } from './config.js';
 // LLM 客户端
 export { LLMClient, getLLMClient, chat, chatWithContext } from './llm.js';
 export type { LLMRequest, LLMResponse } from './llm.js';
+
+// Agent 循环（LLM + Tools）
+export { AgentLoop, createAgentLoop, runAgent } from './loop.js';
+export type { AgentLoopConfig, AgentLoopResult, ToolCall } from './loop.js';
+
+// Subagent 子智能体
+export { runSubagent, listSubagents, killSubagent } from './subagent.js';
+export type { SubagentConfig, SubagentResult } from './subagent.js';
 
 // 重试机制
 export {

@@ -3,6 +3,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { queryLlmLogs, type LlmCallLog } from '../../logger/llm.js';
 
 interface TokenUsageSummary {
   agent_id: string;
@@ -24,6 +25,51 @@ interface TokenUsageDetails {
   llm_logs: unknown[];
 }
 
+/**
+ * 将 LLM 日志转换为前端兼容格式
+ */
+function transformLlmLogForFrontend(log: LlmCallLog): Record<string, unknown> {
+  // 构建完整的输入文本（包含所有消息）
+  let inputText = '';
+  if (log.rawRequest?.system) {
+    inputText += `[System]: ${log.rawRequest.system}\n\n`;
+  }
+  if (log.rawRequest?.messages) {
+    for (const msg of log.rawRequest.messages) {
+      const role = msg.role || 'unknown';
+      const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+      inputText += `[${role}]: ${content}\n`;
+    }
+  }
+
+  // 构建完整的输出文本
+  let outputText = '-';
+  if (log.rawResponse?.content) {
+    outputText = typeof log.rawResponse.content === 'string'
+      ? log.rawResponse.content
+      : log.rawResponse.content[0]?.text || '-';
+  }
+
+  return {
+    timestamp: new Date(log.timestamp).toISOString(),
+    model: log.model,
+    function: 'chat', // 默认设为 chat
+    input_tokens: log.promptTokens || 0,
+    output_tokens: log.completionTokens || 0,
+    input_text: inputText || '-',
+    output_text: outputText,
+    // 保留完整原始数据供展开查看
+    raw_request: log.rawRequest,
+    raw_response: log.rawResponse,
+    extra: {
+      input: inputText || '-',
+      output: outputText,
+      rawRequest: log.rawRequest,
+      rawResponse: log.rawResponse,
+    },
+  };
+}
+
 // In-memory token usage storage
 const tokenUsageStore: Record<string, TokenUsageDetails> = {};
 
@@ -31,21 +77,50 @@ export function createTokenRouter(): Router {
   const router = Router();
 
   // GET /token-usage
-  router.get('/token-usage', (req: Request, res: Response) => {
+  router.get('/token-usage', async (req: Request, res: Response) => {
     const allUsage: Record<string, TokenUsageSummary> = {};
 
+    // 先从内存存储获取
     for (const [agent_id, details] of Object.entries(tokenUsageStore)) {
       allUsage[agent_id] = details.summary;
+    }
+
+    // 查询 LLM 日志中的所有 agent
+    const logs = await queryLlmLogs({ limit: 1000 });
+    const agentIds = new Set(logs.map((log) => log.agentId).filter(Boolean));
+
+    // 为每个有日志的 agent 添加统计
+    for (const agentId of agentIds) {
+      if (!allUsage[agentId]) {
+        // 计算该 agent 的 token 统计
+        const agentLogs = logs.filter((log) => log.agentId === agentId);
+        const totalInput = agentLogs.reduce((sum, log) => sum + (log.promptTokens || 0), 0);
+        const totalOutput = agentLogs.reduce((sum, log) => sum + (log.completionTokens || 0), 0);
+        const lastLog = agentLogs.sort((a, b) => b.timestamp - a.timestamp)[0];
+
+        allUsage[agentId] = {
+          agent_id: agentId,
+          total_tokens: totalInput + totalOutput,
+          input_tokens: totalInput,
+          output_tokens: totalOutput,
+          access_count: agentLogs.length,
+          last_access_time: lastLog ? new Date(lastLog.timestamp).toISOString() : null,
+          updated_at: lastLog ? new Date(lastLog.timestamp).toISOString() : null,
+        };
+      }
     }
 
     res.json({ all_usage: allUsage });
   });
 
   // GET /token-usage/:agent_id
-  router.get('/token-usage/:agent_id', (req: Request, res: Response) => {
+  router.get('/token-usage/:agent_id', async (req: Request, res: Response) => {
     const agent_id = req.params.agent_id as string;
 
     if (!tokenUsageStore[agent_id]) {
+      // 即使没有统计数据，也尝试获取日志
+      const logs = await queryLlmLogs({ agentId: agent_id, limit: 100 });
+      const transformedLogs = logs.map(transformLlmLogForFrontend);
       res.json({
         summary: {
           agent_id,
@@ -61,12 +136,18 @@ export function createTokenRouter(): Router {
           by_function: {},
           by_date: {}
         },
-        llm_logs: []
+        llm_logs: transformedLogs
       });
       return;
     }
 
-    res.json(tokenUsageStore[agent_id]);
+    // 获取日志数据并转换格式
+    const logs = await queryLlmLogs({ agentId: agent_id, limit: 100 });
+    const transformedLogs = logs.map(transformLlmLogForFrontend);
+    res.json({
+      ...tokenUsageStore[agent_id],
+      llm_logs: transformedLogs
+    });
   });
 
   // POST /token-usage/:agent_id/reset

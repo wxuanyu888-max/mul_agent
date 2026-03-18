@@ -124,7 +124,7 @@ const CustomNodeComponent = memo(function CustomNode({ data, selected }: NodePro
           className="w-9 h-9 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: color.bg }}
         >
-          {TypeIcon && <TypeIcon className="w-4 h-4" style={{ color: color.text }} />}
+          {TypeIcon && <span style={{ color: color.text }}><TypeIcon className="w-4 h-4" /></span>}
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-gray-900 font-semibold text-sm block truncate">{nodeData.label}</span>

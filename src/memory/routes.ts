@@ -21,6 +21,7 @@ const DEFAULT_MEMORY_CONFIG: MemorySearchConfig = {
   provider: 'auto',
   model: 'text-embedding-3-small',
   sources: ['memory', 'sessions'],
+  fallback: 'none',
   vector: {
     enabled: true,
   },

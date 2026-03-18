@@ -5,6 +5,15 @@
 import { Router, Request, Response } from 'express';
 import { messageQueue } from '../../message/index.js';
 import { chatWithContext } from '../../agents/llm.js';
+import { AgentLoop } from '../../agents/loop.js';
+import { createReadTool } from '../../tools/file/read.js';
+import { createWriteTool } from '../../tools/file/write.js';
+import { createGrepTool } from '../../tools/file/grep.js';
+import { createFindTool } from '../../tools/file/find.js';
+import { createLsTool } from '../../tools/file/ls.js';
+import { createExecTool } from '../../tools/bash/exec.js';
+import { createTaskTool } from '../../tools/task.js';
+import type { Message } from '../../agents/types.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -230,48 +239,85 @@ export function createChatRouter(): Router {
     // Send status: start
     res.write(`data: ${JSON.stringify({ type: 'status', message: '开始处理...' })}\n\n`);
 
-    // Default system prompt
-    const systemPrompt = '你是一个友好的AI助手，请用中文回答用户的问题。';
-
     try {
       // Get conversation history
       const history = messagesStore[session_id] || [];
 
-      // Build messages for LLM
-      const messages = [
-        ...history.map((msg) => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-        })),
-        { role: 'user' as const, content: message },
-      ];
+      // 转换历史消息为 Message 格式
+      const historyMessages: Message[] = history.map((msg, idx) => ({
+        id: `msg_${idx}_${Date.now()}`,
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+        timestamp: msg.timestamp ?? Date.now(),
+      }));
 
-      // 保存本次请求的 prompt（用于日志）
-      const promptForLog = JSON.stringify(messages);
+      // 创建 AgentLoop 实例
+      const agent = new AgentLoop({
+        maxIterations: 10,
+        workspaceDir: process.cwd(),
+        promptMode: 'full',
+
+        // 回调：工具确认（自动确认执行）
+        onToolConfirm: async (tool) => {
+          return true;
+        },
+
+        // 回调：工具执行
+        onToolExecute: (tool, result) => {
+          res.write(`data: ${JSON.stringify({
+            type: 'tool',
+            tool: tool.name,
+            input: tool.input,
+            result: result.output.substring(0, 500)
+          })}\n\n`);
+        },
+
+        // 回调：LLM 调用（记录完整 prompt）
+        onLlmCall: (messages, systemPrompt) => {
+          // 这里可以记录完整的 system prompt 到日志
+          console.log('[LLM Call] systemPrompt length:', systemPrompt.length);
+          console.log('[LLM Call] messages count:', messages.length);
+        },
+
+        // 回调：LLM 响应
+        onLlmResponse: (response) => {
+          res.write(`data: ${JSON.stringify({ type: 'status', message: 'LLM 响应中...' })}\n\n`);
+        },
+      });
+
+      // 注册工具
+      agent.registerTool(createReadTool() as any);
+      agent.registerTool(createWriteTool() as any);
+      agent.registerTool(createGrepTool() as any);
+      agent.registerTool(createFindTool() as any);
+      agent.registerTool(createLsTool() as any);
+      agent.registerTool(createExecTool() as any);
+      agent.registerTool(createTaskTool() as any);
 
       // Send status: thinking
-      res.write(`data: ${JSON.stringify({ type: 'status', message: 'LLM 思考中...' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'status', message: 'Agent 思考中...' })}\n\n`);
 
-      // Call LLM with streaming
+      // 使用 AgentLoop 处理消息
       const startTime = Date.now();
-
-      // Use chatWithContext to maintain conversation history
-      const response = await chatWithContext(message, history, systemPrompt);
+      const result = await agent.run({
+        message,
+        history: historyMessages,
+      });
 
       const elapsed = Date.now() - startTime;
 
       // Send status: completed
-      res.write(`data: ${JSON.stringify({ type: 'status', message: `处理完成 (${elapsed}ms)` })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'status', message: `处理完成 (${elapsed}ms), 迭代: ${result.iterations}, 工具调用: ${result.toolCalls}` })}\n\n`);
 
       // Send the response
-      res.write(`data: ${JSON.stringify({ type: 'response', response, conversation_id: session_id })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'response', response: result.content, conversation_id: session_id })}\n\n`);
 
       // Send complete
       res.write(`data: ${JSON.stringify({ type: 'complete' })}\n\n`);
 
       // Store messages in memory
       messagesStore[session_id].push({ role: 'user', content: message, timestamp: Date.now() });
-      messagesStore[session_id].push({ role: 'assistant', content: response, timestamp: Date.now() });
+      messagesStore[session_id].push({ role: 'assistant', content: result.content, timestamp: Date.now() });
 
       // 持久化 session 到文件
       await saveSession(session_id, messagesStore[session_id]);

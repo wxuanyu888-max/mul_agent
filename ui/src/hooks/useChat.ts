@@ -2,7 +2,20 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useChatStore } from '../stores';
 import type { Message } from '../types';
 
-export function useChat(selectedAgent?: string) {
+export function useChat(selectedAgent?: string): {
+  messages: Message[];
+  currentSessionId: string | null;
+  isLoading: boolean;
+  executionSteps: any[];
+  showExecutionSteps: boolean;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  loadSessions: () => Promise<void>;
+  loadSessionMessages: (sessionId: string) => Promise<void>;
+  handleNewChat: () => void;
+  sendMessage: (message: string) => Promise<void>;
+  clearMessages: () => void;
+  toggleExecutionSteps: () => void;
+} {
   const {
     messages,
     currentSessionId,

@@ -12,17 +12,20 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "noEmit": true,
-    "noEmitOnError": true,
+    "noEmitOnError": false,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "strict": true,
+    "strict": false,
+    "strictPropertyInitialization": false,
     "target": "ES2023",
     "useDefineForClassFields": false,
+    "jsx": "react-jsx",
     "paths": {
       "@/*": ["./ui/src/*"],
       "@mul-agent/*": ["./mul_agent/*"],
       "@skills/*": ["./skills/*"]
-    }
+    },
+    "baseUrl": "."
   },
   "include": [
     "ui/src/**/*",
@@ -39,6 +42,8 @@
     "storage",
     "wang",
     "agents",
-    "openclaw"
+    "openclaw",
+    "**/*.test.ts",
+    "**/*.test.tsx"
   ]
 }

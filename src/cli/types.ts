@@ -23,7 +23,7 @@ export interface CliOption {
   required?: boolean;
 }
 
-export type CliAction = (args: CliArgs, options: CliOptions) => Promise<void> | void;
+export type CliAction = (args: CliArgs, options: CliArgs, context: CliContext) => Promise<void> | void;
 
 export interface CliArgs {
   [key: string]: any;

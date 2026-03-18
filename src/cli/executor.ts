@@ -20,7 +20,7 @@ export class CliExecutor {
   async execute(argv: string[], context?: Partial<CliContext>): Promise<void> {
     const ctx: CliContext = {
       cwd: context?.cwd || process.cwd(),
-      env: context?.env || process.env,
+      env: context?.env || { ...process.env } as Record<string, string>,
       stdin: context?.stdin || process.stdin,
       stdout: context?.stdout || process.stdout,
       stderr: context?.stderr || process.stderr,

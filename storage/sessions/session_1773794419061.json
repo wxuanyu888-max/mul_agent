@@ -1,0 +1,16 @@
+{
+  "sessionId": "session_1773794419061",
+  "updatedAt": 1773794427682,
+  "messages": [
+    {
+      "role": "user",
+      "content": "帮我找一下mul-agent的文件路径",
+      "timestamp": 1773794427682
+    },
+    {
+      "role": "assistant",
+      "content": "找到了！mul-agent 项目的文件路径是：\n\n**`/Users/agent/PycharmProjects/mul_agent`**\n\n这是一个多代理系统项目，包含以下主要目录：\n\n| 目录/文件 | 说明 |\n|-----------|------|\n| `src/` | 源代码 |\n| `tests/` | 测试文件 |\n| `docs/` | 文档 |\n| `extensions/` | 扩展功能 |\n| `skills/` | 技能定义 |\n| `ui/` | 用户界面 |\n| `storage/` | 存储 |\n| `scripts/` | 脚本 |\n\n项目根目录还包含配置文件如 `package.json`、`tsconfig.json`、`AGENTS.md`、`CLAUDE.md` 等。\n\n需要我查看具体的某个文件或目录内容吗？",
+      "timestamp": 1773794427682
+    }
+  ]
+}

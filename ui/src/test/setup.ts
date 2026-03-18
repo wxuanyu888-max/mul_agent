@@ -2,19 +2,31 @@
 
 import '@testing-library/jest-dom';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockVi = (globalThis as any).vi || ((...args: unknown[]) => ({ mockImplementation: () => ({}) }));
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: mockVi.mockImplementation ? mockVi.fn().mockImplementation(query => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
+    addListener: mockVi.fn(),
+    removeListener: mockVi.fn(),
+    addEventListener: mockVi.fn(),
+    removeEventListener: mockVi.fn(),
+    dispatchEvent: mockVi.fn(),
+  })) : (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => true,
+  }),
 });
 
 // Mock IntersectionObserver
@@ -26,4 +38,4 @@ global.IntersectionObserver = class IntersectionObserver {
     return [];
   }
   unobserve() {}
-} as any;
+} as unknown as typeof IntersectionObserver;

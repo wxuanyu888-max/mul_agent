@@ -84,5 +84,9 @@
       "Bash(cmdkey /list 2>&1 | grep -i github)",
       "Bash(cd \"D:/Resource/200-项目/220-计算机/220-005-mul_agent\" && mv mul-agent-main/* . && mv mul-agent-main/.* . 2>/dev/null; rmdir mul-agent-main && ls -la)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "pencil"
+  ],
+  "enableAllProjectMcpServers": true
 }

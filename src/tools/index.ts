@@ -3,6 +3,9 @@
 
 export * from "./types";
 
+// Task tool (for subagents)
+export { createTaskTool, isTaskTool } from "./task.js";
+
 // Web tools
 export { createWebSearchTool, createWebFetchTool } from "./web/index.js";
 
@@ -56,6 +59,7 @@ export {
 } from "./bash/index.js";
 
 // 工具注册表 - 默认加载的工具
+import { createTaskTool } from "./task.js";
 import { createWebSearchTool, createWebFetchTool } from "./web/index.js";
 import { createMemorySearchTool, createMemoryGetTool } from "./memory/index.js";
 import {
@@ -109,6 +113,8 @@ export interface ToolOptions {
  */
 export function createDefaultTools(options?: ToolOptions) {
   const tools = [
+    // Task (for delegating to subagents)
+    createTaskTool(),
     // Web
     createWebSearchTool(),
     createWebFetchTool(),
@@ -170,6 +176,9 @@ export function createMinimalTools(options?: ToolOptions) {
  * 工具名称映射
  */
 export const TOOL_DESCRIPTIONS: Record<string, string> = {
+  // Task tool
+  task: "Spawn a subagent with fresh context to handle a subtask",
+  // Web tools
   web_search: "Search the web for information",
   web_fetch: "Fetch and extract content from a URL",
   memory_search: "Search memory for relevant information",

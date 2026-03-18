@@ -18,15 +18,19 @@ import type { Message } from './types.js';
 /**
  * LLM 请求参数 (Anthropic 格式)
  */
+export interface LLMMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  tool_call_id?: string;  // 用于 tool_result 消息
+  name?: string;          // 用于 tool_result 消息（指定工具名）
+}
+
 export interface LLMRequest {
   model: string;
   max_tokens?: number;
   temperature?: number;
   system?: string;
-  messages: Array<{
-    role: 'user' | 'assistant';
-    content: string;
-  }>;
+  messages: LLMMessage[];
   tools?: Array<{
     name: string;
     description: string;

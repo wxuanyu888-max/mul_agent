@@ -1,0 +1,16 @@
+{
+  "sessionId": "session_1773744342047",
+  "updatedAt": 1773744344013,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Test message",
+      "timestamp": 1773744344013
+    },
+    {
+      "role": "assistant",
+      "content": "你好！我收到了你的测试消息。我在这里帮助你，有什么我可以帮你的吗？",
+      "timestamp": 1773744344013
+    }
+  ]
+}

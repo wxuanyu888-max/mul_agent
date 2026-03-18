@@ -27,6 +27,14 @@ const DEFAULT_CONFIG: Required<CompactionConfig> = {
   maxTokens: 8000,
   preserveLastN: 20,
   preserveSystem: true,
+  summarize: (messages: Message[]) => {
+    // 简单摘要：提取所有 user 和 assistant 消息的内容
+    const contents = messages
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .map(m => m.content)
+      .join('\n');
+    return `【对话摘要】\n${contents.slice(0, 500)}...`;
+  },
 };
 
 /**

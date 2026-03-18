@@ -2,8 +2,8 @@
  * Ollama LLM Provider (Local)
  */
 
-import { BaseProvider } from '../base.js';
-import type { LLMRequest, LLMResponse, LLMProviderConfig } from '../types.js';
+import { BaseProvider } from './base.js';
+import type { LLMRequest, LLMResponse, LLMProviderConfig } from './types.js';
 
 export class OllamaProvider extends BaseProvider {
   id = 'ollama';

@@ -45,7 +45,10 @@ export default defineConfig({
       "openclaw/**",
       "node_modules/**",
     ],
-    setupFiles: [],
+    // setupFiles: [
+    //   path.join(repoRoot, "ui/src/test/setup.ts"),
+    // ],
+    globals: true,
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov", "html"],

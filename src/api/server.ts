@@ -17,7 +17,7 @@ import { createProjectsRouter } from './routes/projects.js';
 import { createTokenRouter } from './routes/token.js';
 import { createIntegrationsRouter } from './routes/integrations.js';
 
-const app = express();
+const app: ReturnType<typeof express> = express();
 const PORT = process.env.PORT || 8080;
 
 // Middleware

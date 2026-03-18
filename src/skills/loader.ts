@@ -110,15 +110,15 @@ export function resolveOpenClawMetadata(
   return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
-function parseRequirement(requires: any): { type: string; name: string; description?: string }[] {
+function parseRequirement(requires: any): Array<{ type: 'env' | 'tool' | 'feature'; name: string; description?: string }> {
   if (!requires) return [];
   if (Array.isArray(requires)) {
     return requires.map((r: any) => {
       if (typeof r === 'string') {
         const parts = r.split(':');
-        return { type: parts[0] || 'tool', name: parts[1] || r };
+        return { type: (parts[0] || 'tool') as 'env' | 'tool' | 'feature', name: parts[1] || r };
       }
-      return { type: r.type || 'tool', name: r.name };
+      return { type: (r.type || 'tool') as 'env' | 'tool' | 'feature', name: r.name };
     });
   }
   return [];

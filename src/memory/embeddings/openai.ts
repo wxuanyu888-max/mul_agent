@@ -78,11 +78,11 @@ export function createOpenAIEmbeddingProvider(config: OpenAIEmbeddingConfig): {
       }
 
       const data = await response.json() as {
-        data: Array<{ embedding: number[] }>;
+        data: Array<{ embedding: number[]; index: number }>;
       };
 
       // Sort by index to maintain order
-      const sorted = [...data.data].sort((a, b) => a.index - b.index);
+      const sorted = [...data.data].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
       return sorted.map((item) => sanitizeAndNormalizeEmbedding(item.embedding));
     },
   };
