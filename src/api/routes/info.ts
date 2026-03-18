@@ -94,8 +94,8 @@ export function createInfoRouter(): Router {
     res.json({ interactions: [] });
   });
 
-  // GET /thinking/modes
-  router.get('/thinking/modes', (req: Request, res: Response) => {
+  // GET /info/thinking/modes
+  router.get('/info/thinking/modes', (req: Request, res: Response) => {
     res.json({
       modes: [
         { value: 'standard', name: 'Standard', description: 'Default thinking mode' },
@@ -104,8 +104,8 @@ export function createInfoRouter(): Router {
     });
   });
 
-  // GET /thoughts/:session_id
-  router.get('/thoughts/:session_id', (req: Request, res: Response) => {
+  // GET /info/thoughts/:session_id
+  router.get('/info/thoughts/:session_id', (req: Request, res: Response) => {
     const session_id = req.params.session_id as string;
     res.json({
       session_id,
@@ -115,8 +115,8 @@ export function createInfoRouter(): Router {
     });
   });
 
-  // POST /thinking/config
-  router.post('/thinking/config', (req: Request, res: Response) => {
+  // POST /info/thinking/config
+  router.post('/info/thinking/config', (req: Request, res: Response) => {
     res.json({ status: 'success', ...req.body });
   });
 

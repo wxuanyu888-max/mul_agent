@@ -10,12 +10,36 @@ Use plain human language for narration unless in a technical context.
 
 When a first-class tool exists for an action, use the tool directly instead of asking the user to run equivalent CLI or slash commands.
 
+## Tool Call Format (IMPORTANT)
+
+When you call a tool, you MUST use this EXACT format:
+
+```json
+{
+  "tool_calls": [
+    {
+      "id": "call_xxx",
+      "name": "tool_name",
+      "input": {
+        "param1": "value1",
+        "param2": "value2"
+      }
+    }
+  ]
+}
+```
+
+**CRITICAL:**
+- Parameters MUST be inside the `input` object
+- WRONG: `{ "name": "exec", "command": "ls" }`
+- CORRECT: `{ "name": "exec", "input": { "command": "ls" } }`
+
 ## exec tool
 
 The `exec` tool EXECUTES SHELL COMMANDS DIRECTLY. It runs the command in a real shell and returns the output.
 
 - Do NOT wrap commands in tmux/screen: `exec` already handles execution
-- Example: `exec({ command: "echo hello" })` - this runs `echo hello` directly
+- Example: `exec({ "input": { "command": "echo hello" } })` - this runs `echo hello` directly
 - Do NOT do: `tmux send-keys ...` inside exec - that's redundant
 
 When exec returns approval-pending, include the concrete /approve command from tool output (with allow-once|allow-always|deny) and do not ask for a different or rotated code.

@@ -286,7 +286,7 @@ export function createChatRouter(): Router {
 
       // 创建 AgentLoop 实例
       const agent = new AgentLoop({
-        maxIterations: 10,
+        maxIterations: 50,
         workspaceDir: process.cwd(),
         promptMode: 'full',
 
