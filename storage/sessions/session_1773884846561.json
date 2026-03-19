@@ -1,0 +1,16 @@
+{
+  "sessionId": "session_1773884846561",
+  "updatedAt": 1773884850798,
+  "messages": [
+    {
+      "role": "user",
+      "content": "hello",
+      "timestamp": 1773884850798
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! How can I help you today? I'm your personal assistant in MulAgent, ready to help with tasks like reading/writing files, running commands, searching code, managing information, and more.",
+      "timestamp": 1773884850798
+    }
+  ]
+}

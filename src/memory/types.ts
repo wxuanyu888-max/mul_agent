@@ -103,7 +103,7 @@ export interface MemorySearchManager {
 // Embedding Provider Types
 // ============================================================================
 
-export type EmbeddingProviderId = 'openai' | 'local' | 'gemini' | 'voyage' | 'mistral' | 'ollama';
+export type EmbeddingProviderId = 'openai' | 'local' | 'gemini' | 'voyage' | 'mistral' | 'ollama' | 'offline';
 export type EmbeddingProviderRequest = EmbeddingProviderId | 'auto';
 export type EmbeddingProviderFallback = EmbeddingProviderId | 'none';
 

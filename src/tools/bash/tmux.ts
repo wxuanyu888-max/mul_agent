@@ -106,10 +106,12 @@ export async function tmuxExec(
       }
     }
 
-    // 超时
+    // 超时 - 清理临时文件，忽略错误
     try {
       await execPromise(`rm -f ${outputFile}`);
-    } catch {}
+    } catch {
+      // 忽略清理错误
+    }
 
     return {
       stdout: '',

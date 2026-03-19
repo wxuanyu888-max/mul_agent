@@ -29,6 +29,7 @@ export {
   createGeminiEmbeddingProvider,
   createMistralEmbeddingProvider,
   createOllamaEmbeddingProvider,
+  createOfflineEmbeddingProvider,
   listOllamaModels,
   sanitizeAndNormalizeEmbedding,
   getDefaultEmbeddingModel,
@@ -56,6 +57,20 @@ export {
 
 // Manager
 export { MemoryIndexManager, getMemoryIndexManager } from './manager.js';
+
+// Unified Memory System
+export {
+  UnifiedMemoryManager,
+  createUnifiedMemoryManager,
+  MemoryTier,
+  DEFAULT_UNIFIED_MEMORY_CONFIG,
+  type UnifiedMemoryConfig,
+  type MemoryItem,
+  type ShortMemoryConfig,
+  type RemoteMemoryConfig,
+  type VectorMemoryConfig,
+  type WorkspaceConfig,
+} from './unified.js';
 
 // Routes
 export { createMemoryRouter } from './routes.js';

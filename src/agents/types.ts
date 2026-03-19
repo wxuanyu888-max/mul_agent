@@ -66,6 +66,24 @@ export interface Message {
 }
 
 /**
+ * 统一的 Session 消息格式
+ * 用于持久化和加载历史记录
+ * 包含完整的 tool_use/tool_result 信息
+ */
+export interface SessionMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  tool_calls?: Array<{
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+  }>;
+  tool_call_id?: string;  // tool_result 时关联 tool_calls
+  name?: string;          // tool_result 时指定工具名
+  timestamp?: number;
+}
+
+/**
  * 工具调用
  */
 export interface ToolCall {

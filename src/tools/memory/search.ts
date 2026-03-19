@@ -134,10 +134,14 @@ export function createMemoryTool() {
             await fs.mkdir(memoryDir, { recursive: true });
             await fs.writeFile(fullPath, content, 'utf-8');
 
+            // 触发索引更新
+            const manager = await getManager(agentId, workspaceDir);
+            await manager.sync({ reason: 'memory_write', force: true });
+
             return jsonResult({
               path: fileName,
               content: content,
-              message: `Saved to ${fileName}`,
+              message: `Saved to ${fileName} and indexed`,
             });
           }
 

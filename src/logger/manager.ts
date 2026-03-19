@@ -117,7 +117,7 @@ export class Logger {
    */
   private formatEntry(entry: LogEntry): string {
     if (this.config.format === 'json') {
-      return JSON.stringify(entry);
+      return JSON.stringify(entry) + '\n';
     }
     const timestamp = new Date(entry.timestamp).toISOString();
     const context = entry.context ? ` ${JSON.stringify(entry.context)}` : '';
@@ -271,7 +271,7 @@ export function initLogger(config: Partial<LoggerConfig>): Logger {
  */
 export async function queryLogs(options: LogQueryOptions = {}): Promise<LogEntry[]> {
   const { filter, limit = 100, offset = 0, sort = 'desc' } = options;
-  const logsDir = path.join(STORAGE_DIR, filter?.agentId || 'default');
+  const logsDir = path.join(process.cwd(), 'storage', 'logs', filter?.agentId || 'default');
 
   try {
     const entries = await fs.readdir(logsDir);

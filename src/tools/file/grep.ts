@@ -1,42 +1,89 @@
-// 文件搜索工具 - grep
-import fs from 'node:fs/promises';
-import path from 'node:path';
+// 文件搜索工具 - grep (基于向量搜索)
 import { errorResult, jsonResult } from '../types.js';
+import { getMemoryIndexManager } from '../../memory/manager.js';
+import type { MemorySearchConfig } from '../../memory/types.js';
 
 export interface GrepParams {
   query: string;           // 搜索内容
-  path?: string;           // 搜索路径
-  filePattern?: string;    // 文件模式，如 *.ts, *.js
-  ignorePattern?: string;  // 忽略的模式，如 node_modules
-  context?: number;       // 上下文行数
-  caseSensitive?: boolean; // 是否大小写敏感
+  path?: string;           // 搜索路径（保留兼容，实际现在搜 workspace）
   maxResults?: number;     // 最大结果数
+  mode?: 'semantic' | 'exact';  // 搜索模式
 }
 
 interface GrepResult {
-  file: string;
-  line: number;
-  content: string;
+  path: string;
+  snippet: string;
+  score: number;
+  startLine: number;
+  endLine: number;
 }
 
 /**
- * 创建文件内容搜索工具
+ * 默认的 Memory 配置（用于 Grep）
+ */
+const GREP_MEMORY_CONFIG: MemorySearchConfig = {
+  enabled: true,
+  provider: 'offline',  // 默认使用离线嵌入
+  model: 'tfidf',
+  fallback: 'none',
+  vector: {
+    enabled: true,
+  },
+  fts: {
+    enabled: true,
+  },
+  sources: ['memory'],
+  extraPaths: [],  // 会包含 workspace
+};
+
+/**
+ * 获取 Grep 用的 Memory Manager
+ */
+let grepManager: ReturnType<typeof getMemoryIndexManager> | null = null;
+
+async function getGrepManager() {
+  if (!grepManager) {
+    const workspaceDir = process.cwd();
+    grepManager = getMemoryIndexManager({
+      agentId: 'grep',
+      workspaceDir,
+      config: {
+        ...GREP_MEMORY_CONFIG,
+        sources: ['memory'],
+        extraPaths: ['storage/workspace'],
+      },
+    });
+  }
+  return grepManager;
+}
+
+/**
+ * 同步工作区到向量库
+ */
+export async function syncWorkspaceToMemory() {
+  try {
+    const manager = await getGrepManager();
+    await manager.sync({ reason: 'workspace_sync', force: true });
+  } catch (error) {
+    console.warn('[Grep] Failed to sync workspace:', error);
+  }
+}
+
+/**
+ * 创建文件内容搜索工具（基于向量搜索）
  */
 export function createGrepTool() {
   return {
     label: 'Grep',
     name: 'grep',
-    description: 'Search for a string in files. Returns matching lines with context.',
+    description: 'Search for information in workspace files using semantic search. Returns relevant snippets with context.',
     parameters: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'The string or regex pattern to search for' },
-        path: { type: 'string', description: 'Directory path to search in (default: current directory)', default: '.' },
-        filePattern: { type: 'string', description: 'File pattern to match (e.g., "*.ts", "*.js")', default: '*' },
-        ignorePattern: { type: 'string', description: 'Pattern to ignore (e.g., "node_modules")', default: 'node_modules' },
-        context: { type: 'number', description: 'Number of context lines to show', default: 2 },
-        caseSensitive: { type: 'boolean', description: 'Case sensitive search', default: true },
-        maxResults: { type: 'number', description: 'Maximum number of results', default: 100 },
+        query: { type: 'string', description: 'The search query (supports natural language)' },
+        path: { type: 'string', description: 'Directory path to search in (default: workspace)', default: 'storage/workspace' },
+        maxResults: { type: 'number', description: 'Maximum number of results', default: 10 },
+        mode: { type: 'string', description: 'Search mode: semantic (vector) or exact (regex)', enum: ['semantic', 'exact'], default: 'semantic' },
       },
       required: ['query'],
     },
@@ -44,24 +91,30 @@ export function createGrepTool() {
       try {
         const {
           query,
-          path: searchPath = '.',
-          filePattern = '*',
-          ignorePattern = 'node_modules',
-          context = 2,
-          caseSensitive = true,
-          maxResults = 100,
+          maxResults = 10,
+          mode = 'semantic',
         } = params;
 
-        const results: GrepResult[] = [];
-        const regex = new RegExp(query, caseSensitive ? 'g' : 'gi');
+        if (mode === 'exact') {
+          // 精确搜索：使用传统的正则匹配
+          return await exactSearch(query, params.path || '.', maxResults);
+        }
 
-        await searchDirectory(searchPath, filePattern, ignorePattern, regex, context, results, maxResults);
+        // 向量搜索：使用 rag search
+        const manager = await getGrepManager();
+        const results = await manager.search(query, { maxResults });
 
         return jsonResult({
-          results: results.slice(0, maxResults),
+          results: results.map((r) => ({
+            path: r.path,
+            snippet: r.snippet,
+            score: r.score,
+            startLine: r.startLine,
+            endLine: r.endLine,
+          })),
           count: results.length,
           query,
-          path: searchPath,
+          mode: 'semantic',
         });
       } catch (error) {
         return errorResult(`Grep failed: ${error}`);
@@ -70,60 +123,67 @@ export function createGrepTool() {
   };
 }
 
-async function searchDirectory(
-  dirPath: string,
-  filePattern: string,
-  ignorePattern: string,
-  regex: RegExp,
-  context: number,
-  results: GrepResult[],
-  maxResults: number
-): Promise<void> {
-  if (results.length >= maxResults) return;
+/**
+ * 精确搜索（传统正则匹配）
+ */
+async function exactSearch(query: string, searchPath: string, maxResults: number) {
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
 
-  try {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+  const results: GrepResult[] = [];
+  const regex = new RegExp(query, 'gi');
 
-    for (const entry of entries) {
-      if (results.length >= maxResults) break;
+  async function searchDir(dirPath: string): Promise<void> {
+    if (results.length >= maxResults) return;
 
-      const fullPath = path.join(dirPath, entry.name);
+    try {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
-      // 跳过忽略的目录
-      if (entry.isDirectory()) {
-        if (entry.name === ignorePattern || entry.name.startsWith('.')) continue;
-        await searchDirectory(fullPath, filePattern, ignorePattern, regex, context, results, maxResults);
-      } else if (entry.isFile()) {
-        // 检查文件模式
-        const pattern = new RegExp(filePattern.replace('*', '.*'));
-        if (!pattern.test(entry.name)) continue;
+      for (const entry of entries) {
+        if (results.length >= maxResults) break;
 
-        // 搜索文件内容
-        try {
-          const content = await fs.readFile(fullPath, 'utf-8');
-          const lines = content.split('\n');
+        const fullPath = path.join(dirPath, entry.name);
 
-          for (let i = 0; i < lines.length; i++) {
-            if (results.length >= maxResults) break;
-            if (regex.test(lines[i])) {
-              // 获取上下文
-              const start = Math.max(0, i - context);
-              const end = Math.min(lines.length - 1, i + context);
+        if (entry.isDirectory()) {
+          if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+          await searchDir(fullPath);
+        } else if (entry.isFile()) {
+          try {
+            const content = await fs.readFile(fullPath, 'utf-8');
+            const lines = content.split('\n');
 
-              results.push({
-                file: fullPath,
-                line: i + 1,
-                content: lines.slice(start, end + 1).join('\n'),
-              });
+            for (let i = 0; i < lines.length; i++) {
+              if (results.length >= maxResults) break;
+              if (regex.test(lines[i])) {
+                const start = Math.max(0, i - 1);
+                const end = Math.min(lines.length - 1, i + 1);
+
+                results.push({
+                  path: fullPath,
+                  snippet: lines.slice(start, end + 1).join('\n'),
+                  score: 1,
+                  startLine: start + 1,
+                  endLine: end + 1,
+                });
+              }
+              regex.lastIndex = 0;
             }
-            regex.lastIndex = 0; // 重置正则
+          } catch (error) {
+            // 跳过无法读取的文件
           }
-        } catch {
-          // 跳过无法读取的文件
         }
       }
+    } catch (error) {
+      // 跳过无法访问的目录
     }
-  } catch {
-    // 跳过无法访问的目录
   }
+
+  await searchDir(searchPath);
+
+  return jsonResult({
+    results,
+    count: results.length,
+    query,
+    mode: 'exact',
+  });
 }

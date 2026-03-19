@@ -9,6 +9,7 @@ import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { watch } from 'node:fs';
 import type { DatabaseSync } from 'node:sqlite';
 
 import type {
@@ -65,6 +66,12 @@ export class MemoryIndexManager implements MemorySearchManager {
 
   // File tracking
   private indexedFiles: Map<string, number> = new Map();
+
+  // File watcher
+  private fileWatcher: fsSync.FSWatcher | null = null;
+  private watchDebounceTimer: NodeJS.Timeout | null = null;
+  private readonly WATCH_DEBOUNCE_MS = 1000;
+  private pendingFiles: Set<string> = new Set();
 
   constructor(options: MemoryIndexManagerOptions) {
     this.agentId = options.agentId;
@@ -273,6 +280,10 @@ export class MemoryIndexManager implements MemorySearchManager {
         concurrency: this.config.batch?.concurrency ?? 5,
         pollIntervalMs: this.config.batch?.pollIntervalMs ?? 1000,
         timeoutMs: this.config.batch?.timeoutMs ?? 60000,
+      },
+      custom: {
+        watching: this.isWatching(),
+        pendingFiles: this.pendingFiles.size,
       },
     };
   }
@@ -538,9 +549,114 @@ export class MemoryIndexManager implements MemorySearchManager {
   }
 
   /**
+   * Start file watching for auto-sync
+   */
+  startFileWatching(): void {
+    if (this.fileWatcher) {
+      console.log('File watcher already running');
+      return;
+    }
+
+    const sources = this.config.sources || ['memory', 'sessions'];
+    const watchDirs: string[] = [];
+
+    // Add source directories
+    for (const source of sources) {
+      const sourceDir = path.join(this.workspaceDir, source);
+      watchDirs.push(sourceDir);
+    }
+
+    // Add extra paths
+    const extraPaths = this.config.extraPaths || [];
+    watchDirs.push(...extraPaths);
+
+    console.log(`[Memory] Starting file watcher for directories:`, watchDirs);
+
+    // Create watcher for each directory
+    for (const dir of watchDirs) {
+      try {
+        this.fileWatcher = watch(dir, { recursive: true }, (eventType, filename) => {
+          if (!filename) return;
+
+          const fullPath = path.join(dir, filename);
+
+          // Only watch indexable files
+          if (!this.isIndexableFile(filename)) return;
+
+          console.log(`[Memory] File ${eventType}: ${fullPath}`);
+
+          // Add to pending files
+          this.pendingFiles.add(fullPath);
+
+          // Debounce the sync
+          if (this.watchDebounceTimer) {
+            clearTimeout(this.watchDebounceTimer);
+          }
+
+          this.watchDebounceTimer = setTimeout(async () => {
+            await this.handleFileChanges();
+          }, this.WATCH_DEBOUNCE_MS);
+        });
+
+        this.fileWatcher.on('error', (error) => {
+          console.error('[Memory] File watcher error:', error);
+        });
+      } catch (error) {
+        console.warn(`[Memory] Could not watch directory ${dir}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Handle file changes
+   */
+  private async handleFileChanges(): Promise<void> {
+    if (this.pendingFiles.size === 0) return;
+
+    const filesToReindex = Array.from(this.pendingFiles);
+    this.pendingFiles.clear();
+
+    console.log(`[Memory] Re-indexing ${filesToReindex.length} changed files`);
+
+    for (const filePath of filesToReindex) {
+      try {
+        await this.indexFile(filePath, 'memory');
+      } catch (error) {
+        console.error(`[Memory] Failed to re-index file ${filePath}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Stop file watching
+   */
+  stopFileWatching(): void {
+    if (this.fileWatcher) {
+      this.fileWatcher.close();
+      this.fileWatcher = null;
+      console.log('[Memory] File watcher stopped');
+    }
+
+    if (this.watchDebounceTimer) {
+      clearTimeout(this.watchDebounceTimer);
+      this.watchDebounceTimer = null;
+    }
+
+    this.pendingFiles.clear();
+  }
+
+  /**
+   * Check if file watcher is running
+   */
+  isWatching(): boolean {
+    return this.fileWatcher !== null;
+  }
+
+  /**
    * Close the manager
    */
   async close(): Promise<void> {
+    this.stopFileWatching();
     this.db.close();
     this.embeddingCache.clear();
     this.indexedFiles.clear();

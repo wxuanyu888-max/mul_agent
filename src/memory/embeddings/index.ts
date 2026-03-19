@@ -17,8 +17,8 @@ export { createVoyageEmbeddingProvider, type VoyageEmbeddingConfig, type VoyageE
 export { createGeminiEmbeddingProvider, type GeminiEmbeddingConfig, type GeminiEmbeddingClient } from './gemini.js';
 export { createMistralEmbeddingProvider, type MistralEmbeddingConfig, type MistralEmbeddingClient } from './mistral.js';
 export { createOllamaEmbeddingProvider, listOllamaModels, type OllamaEmbeddingConfig, type OllamaEmbeddingClient } from './ollama.js';
-
 export { sanitizeAndNormalizeEmbedding, getDefaultEmbeddingModel, DEFAULT_EMBEDDING_MODELS } from './base.js';
+export { createOfflineEmbeddingProvider, OfflineEmbeddingProvider } from './offline.js';
 
 /**
  * Create an embedding provider based on configuration
@@ -149,6 +149,20 @@ async function tryCreateProvider(
         return {
           provider: null,
           requestedProvider: provider,
+          providerUnavailableReason: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
+
+    case 'offline': {
+      try {
+        const { createOfflineEmbeddingProvider } = await import('./offline.js');
+        const provider = createOfflineEmbeddingProvider();
+        return { provider, requestedProvider: 'offline' as const };
+      } catch (err) {
+        return {
+          provider: null,
+          requestedProvider: 'offline' as const,
           providerUnavailableReason: err instanceof Error ? err.message : String(err),
         };
       }

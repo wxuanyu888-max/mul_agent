@@ -14,9 +14,9 @@
  * 3. manual compact: 手动调用 compact 工具触发同样的摘要机制
  */
 
-import { getLLMClient, type LLMRequest, type LLMResponse } from './llm.js';
+import { getLLMClient, type LLMMessage, type LLMRequest, type LLMResponse } from './llm.js';
 import { buildSystemPrompt, type BuildContext, type ToolInfo, type SkillInfo } from './prompt/index.js';
-import { createDefaultTools } from '../tools/index.js';
+import { createDefaultTools, syncWorkspaceToMemory } from '../tools/index.js';
 import type { Message, ToolResult as AgentToolResult } from './types.js';
 import { errorResult, type JsonToolResult, type ToolResult } from '../tools/types.js';
 import {
@@ -90,6 +90,18 @@ export interface AgentLoopResult {
     inputTokens: number;
     outputTokens: number;
   };
+  /** 完整的消息历史（包含 tool_calls 和 tool_results） */
+  messages?: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    tool_calls?: Array<{
+      id: string;
+      name: string;
+      input: Record<string, unknown>;
+    }>;
+    tool_call_id?: string;
+    name?: string;
+  }>;
 }
 
 /**
@@ -272,16 +284,33 @@ export class AgentLoop {
     const systemPrompt = await this.buildPrompt();
 
     // 构建初始消息
-    let messages: LLMRequest['messages'] = [];
+    let messages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      tool_calls?: Array<{ id: string; name: string; input: Record<string, unknown> }>;
+      tool_call_id?: string;
+    }> = [];
 
-    // 添加历史消息
+    // 添加历史消息（只包含 user 和 assistant，排除 system）
     for (const msg of history) {
       if (msg.role === 'user' || msg.role === 'assistant') {
-        messages.push({
+        const formatted = {
           role: msg.role,
-          content: msg.content,
-        });
+          content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+        } as const;
+
+        // 添加 tool_calls (assistant 角色)
+        if (msg.toolCalls) {
+          (formatted as any).tool_calls = msg.toolCalls.map(tc => ({
+            id: tc.id,
+            name: tc.name,
+            input: tc.input,
+          }));
+        }
+
+        messages.push(formatted);
       }
+      // system 消息通过 systemPrompt 处理，不加到 messages 数组
     }
 
     // 添加当前消息
@@ -328,7 +357,6 @@ export class AgentLoop {
 
         // 获取工具定义
         const tools = this.getToolDefinitions();
-        console.log('[DEBUG] tools:', JSON.stringify(tools, null, 2));
 
         // 调用 LLM
         this.config.onLlmCall(messages, systemPrompt);
@@ -431,12 +459,19 @@ export class AgentLoop {
         }
 
         // 其他停止原因，返回文本内容
+        // 添加最终的 assistant 消息到 messages
+        messages.push({
+          role: 'assistant',
+          content: textContent,
+        });
+
         return {
           content: textContent,
           success: true,
           iterations,
           toolCalls: toolCallsCount,
           usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+          messages: messages as AgentLoopResult['messages'],
         };
       }
 
@@ -448,6 +483,7 @@ export class AgentLoop {
         toolCalls: toolCallsCount,
         error: 'Max iterations reached',
         usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+        messages: messages as AgentLoopResult['messages'],
       };
     } catch (error) {
       return {
@@ -457,6 +493,7 @@ export class AgentLoop {
         toolCalls: toolCallsCount,
         error: error instanceof Error ? error.message : String(error),
         usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+        messages: messages as AgentLoopResult['messages'],
       };
     }
   }
@@ -589,6 +626,9 @@ export async function runAgent(params: {
     extraSystemPrompt: params.extraSystemPrompt,
     promptMode: params.promptMode,
   });
+
+  // 启动时同步工作区到向量库
+  syncWorkspaceToMemory().catch(console.error);
 
   loop.registerDefaultTools();
 

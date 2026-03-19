@@ -255,10 +255,10 @@ function buildDynamicVariables(context: BuildContext): Record<string, string> {
 
   return {
     // 核心变量
-    workspace: loadModule('workspace').replace('{{workspace}}', config.workspaceDir),
+    workspace: loadModule('workspace'),
     runtime_info: runtimeInfo,
 
-    // 工作目录变量
+    // 工作目录变量（会替换 workspace 中的 {{workspace_dir}} 等占位符）
     ...workspaceVars,
 
     // 沙箱变量

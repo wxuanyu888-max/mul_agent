@@ -190,7 +190,9 @@ export async function loadSkillsFromDir(dirPath: string): Promise<SkillEntry[]> 
               skills.push(skillEntry);
             }
           }
-        } catch {}
+        } catch {
+          // 跳过无法读取的目录
+        }
         continue;
       }
 

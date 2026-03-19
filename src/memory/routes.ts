@@ -266,8 +266,27 @@ export function createMemoryRouter(): Router {
     try {
       const { content, agent_id, memory_type, metadata } = req.body as WriteMemoryRequest;
 
+      // Input validation
       if (!content) {
         res.status(400).json({ error: 'Content is required' });
+        return;
+      }
+
+      // Validate content length
+      if (typeof content !== 'string' || content.length > 100000) {
+        res.status(400).json({ error: 'Content must be a string with max 100000 characters' });
+        return;
+      }
+
+      // Validate agent_id if provided
+      if (agent_id && typeof agent_id !== 'string') {
+        res.status(400).json({ error: 'agent_id must be a string' });
+        return;
+      }
+
+      // Validate memory_type if provided
+      if (memory_type && !['short_term', 'long_term', 'handover'].includes(memory_type)) {
+        res.status(400).json({ error: 'memory_type must be short_term, long_term, or handover' });
         return;
       }
 
@@ -286,20 +305,25 @@ export function createMemoryRouter(): Router {
         updated_at: new Date().toISOString(),
       };
 
-      // For short-term memory, limit the size
+      // For short-term memory, limit the size - use immutable pattern
       const memories = getAgentMemories(agentId);
-      if (type === 'short_term' && memories.filter((m) => m.type === 'short_term').length >= 100) {
-        // Remove oldest short-term memory
-        const oldestIdx = memories
+      let updatedMemories = [...memories];
+
+      if (type === 'short_term' && updatedMemories.filter((m) => m.type === 'short_term').length >= 100) {
+        // Remove oldest short-term memory (immutable)
+        const oldestMemory = updatedMemories
           .filter((m) => m.type === 'short_term')
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-          .findIndex((m) => m.id);
-        if (oldestIdx >= 0) {
-          memories.splice(oldestIdx, 1);
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+
+        if (oldestMemory) {
+          updatedMemories = updatedMemories.filter((m) => m.id !== oldestMemory.id);
         }
       }
 
-      memories.push(memory);
+      updatedMemories.push(memory);
+
+      // Update the store (clear and set new array)
+      memoryStore.set(agentId, updatedMemories);
 
       // Also index to vector database if available
       try {
@@ -333,14 +357,16 @@ export function createMemoryRouter(): Router {
       const agentId = (req.query.agent_id as string) || DEFAULT_AGENT_ID;
 
       const memories = getAgentMemories(agentId);
-      const index = memories.findIndex((m) => m.id === memoryId);
+      const memoryExists = memories.some((m) => m.id === memoryId);
 
-      if (index === -1) {
+      if (!memoryExists) {
         res.status(404).json({ error: 'Memory not found' });
         return;
       }
 
-      memories.splice(index, 1);
+      // Use immutable pattern - filter instead of splice
+      const updatedMemories = memories.filter((m) => m.id !== memoryId);
+      memoryStore.set(agentId, updatedMemories);
 
       res.json({
         status: 'success',
@@ -376,6 +402,54 @@ export function createMemoryRouter(): Router {
     } catch (error) {
       console.error('Error syncing memory index:', error);
       res.status(500).json({ error: 'Failed to sync memory index' });
+    }
+  });
+
+  // POST /memory/watch - Start file watching
+  router.post('/watch/start', async (req: Request, res: Response) => {
+    try {
+      const agentId = (req.query.agent_id as string) || DEFAULT_AGENT_ID;
+      const workspaceDir = DEFAULT_WORKSPACE_DIR;
+
+      const manager = await getMemoryIndexManager({
+        agentId,
+        workspaceDir,
+        config: DEFAULT_MEMORY_CONFIG,
+      });
+
+      manager.startFileWatching();
+
+      res.json({
+        status: 'success',
+        message: 'File watching started',
+      });
+    } catch (error) {
+      console.error('Error starting file watching:', error);
+      res.status(500).json({ error: 'Failed to start file watching' });
+    }
+  });
+
+  // POST /memory/watch/stop - Stop file watching
+  router.post('/watch/stop', async (req: Request, res: Response) => {
+    try {
+      const agentId = (req.query.agent_id as string) || DEFAULT_AGENT_ID;
+      const workspaceDir = DEFAULT_WORKSPACE_DIR;
+
+      const manager = await getMemoryIndexManager({
+        agentId,
+        workspaceDir,
+        config: DEFAULT_MEMORY_CONFIG,
+      });
+
+      manager.stopFileWatching();
+
+      res.json({
+        status: 'success',
+        message: 'File watching stopped',
+      });
+    } catch (error) {
+      console.error('Error stopping file watching:', error);
+      res.status(500).json({ error: 'Failed to stop file watching' });
     }
   });
 

@@ -14,7 +14,7 @@ export interface LLMOptions {
 
 /**
  * 简单的 LLM 调用函数
- * TODO: 替换为真正的 LLM API 调用
+ * 支持 Anthropic 和 OpenAI API
  */
 export async function llmChat(
   message: string,

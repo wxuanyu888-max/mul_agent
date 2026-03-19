@@ -18,7 +18,6 @@ export function LogViewer() {
         filter.source || undefined
       );
       setLogs(response.data.logs);
-      console.log('[LogViewer] Fetched logs:', response.data.logs.length);
     } catch (err) {
       console.error('Failed to fetch logs:', err);
     } finally {

@@ -1,0 +1,16 @@
+{
+  "sessionId": "session_1773884967615",
+  "updatedAt": 1773884970228,
+  "messages": [
+    {
+      "role": "user",
+      "content": "test",
+      "timestamp": 1773884970228
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! I'm here and working. How can I help you today?",
+      "timestamp": 1773884970228
+    }
+  ]
+}

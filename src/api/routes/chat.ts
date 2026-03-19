@@ -6,7 +6,7 @@ import { Router, Request, Response } from 'express';
 import { messageQueue } from '../../message/index.js';
 import { chatWithContext } from '../../agents/llm.js';
 import { AgentLoop } from '../../agents/loop.js';
-import type { Message } from '../../agents/types.js';
+import type { Message, SessionMessage } from '../../agents/types.js';
 import { querySessions, getSession, deleteSession } from '../../session/manager.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -18,17 +18,19 @@ const SESSIONS_DIR = path.join(process.cwd(), 'storage', 'sessions');
 async function ensureDir(dir: string) {
   try {
     await fs.mkdir(dir, { recursive: true });
-  } catch {}
+  } catch {
+    // 目录已存在，忽略错误
+  }
 }
 ensureDir(SESSIONS_DIR);
 
-// In-memory storage for chat sessions (历史消息记录)
-const messagesStore: Record<string, Array<{ role: string; content: string; timestamp?: number }>> = {};
+// In-memory storage for chat sessions (统一消息格式，包含完整 tool_use/tool_result)
+const messagesStore: Record<string, SessionMessage[]> = {};
 
 /**
  * 持久化 session 到文件
  */
-async function saveSession(sessionId: string, messages: Array<{ role: string; content: string; timestamp?: number }>) {
+async function saveSession(sessionId: string, messages: SessionMessage[]) {
   const sessionFile = path.join(SESSIONS_DIR, `${sessionId}.json`);
   await fs.writeFile(sessionFile, JSON.stringify({
     sessionId,
@@ -40,7 +42,7 @@ async function saveSession(sessionId: string, messages: Array<{ role: string; co
 /**
  * 从文件加载 session
  */
-async function loadSession(sessionId: string): Promise<Array<{ role: string; content: string; timestamp?: number }>> {
+async function loadSession(sessionId: string): Promise<SessionMessage[]> {
   const sessionFile = path.join(SESSIONS_DIR, `${sessionId}.json`);
   try {
     const content = await fs.readFile(sessionFile, 'utf-8');
@@ -91,8 +93,7 @@ export function createChatRouter(): Router {
       return;
     }
 
-    // TODO: 这里调用实际的 agent 处理逻辑
-    // 模拟处理
+    // 模拟处理（实际的 agent 处理在 /chat/stream 端点）
     const responseText = `处理中: ${msg.content}`;
 
     // 记录消息
@@ -273,14 +274,15 @@ export function createChatRouter(): Router {
     res.write(`data: ${JSON.stringify({ type: 'status', message: '开始处理...' })}\n\n`);
 
     try {
-      // Get conversation history
+      // Get conversation history (统一格式，包含完整 tool_use/tool_result)
       const history = messagesStore[session_id] || [];
 
-      // 转换历史消息为 Message 格式
+      // 转换历史消息为 Message 格式（保持完整结构）
       const historyMessages: Message[] = history.map((msg, idx) => ({
         id: `msg_${idx}_${Date.now()}`,
-        role: msg.role as 'user' | 'assistant',
+        role: msg.role as 'user' | 'assistant' | 'system',
         content: msg.content,
+        toolCalls: msg.tool_calls as any,
         timestamp: msg.timestamp ?? Date.now(),
       }));
 
@@ -305,11 +307,9 @@ export function createChatRouter(): Router {
           })}\n\n`);
         },
 
-        // 回调：LLM 调用（记录完整 prompt）
+        // 回调：LLM 调用
         onLlmCall: (messages, systemPrompt) => {
-          // 这里可以记录完整的 system prompt 到日志
-          console.log('[LLM Call] systemPrompt length:', systemPrompt.length);
-          console.log('[LLM Call] messages count:', messages.length);
+          // 可用于调试
         },
 
         // 回调：LLM 响应
@@ -342,9 +342,22 @@ export function createChatRouter(): Router {
       // Send complete
       res.write(`data: ${JSON.stringify({ type: 'complete' })}\n\n`);
 
-      // Store messages in memory
-      messagesStore[session_id].push({ role: 'user', content: message, timestamp: Date.now() });
-      messagesStore[session_id].push({ role: 'assistant', content: result.content, timestamp: Date.now() });
+      // Store full messages in memory (包含完整的 tool_use/tool_result)
+      // result.messages 已经包含完整的历史，直接替换
+      if (result.messages && result.messages.length > 0) {
+        messagesStore[session_id] = result.messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+          tool_calls: msg.tool_calls,
+          tool_call_id: msg.tool_call_id,
+          name: msg.name,
+          timestamp: Date.now(),
+        }));
+      } else {
+        // 兼容：如果没有 result.messages，回退到旧逻辑
+        messagesStore[session_id].push({ role: 'user', content: message, timestamp: Date.now() });
+        messagesStore[session_id].push({ role: 'assistant', content: result.content, timestamp: Date.now() });
+      }
 
       // 持久化 session 到文件
       await saveSession(session_id, messagesStore[session_id]);

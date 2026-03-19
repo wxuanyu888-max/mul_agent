@@ -59,6 +59,7 @@ export {
   createWriteTool,
   createEditTool,
   createGrepTool,
+  syncWorkspaceToMemory,
   createFindTool,
   createLsTool,
 } from "./file/index.js";
@@ -124,6 +125,7 @@ import {
   createWriteTool,
   createEditTool,
   createGrepTool,
+  syncWorkspaceToMemory,
   createFindTool,
   createLsTool,
 } from "./file/index.js";

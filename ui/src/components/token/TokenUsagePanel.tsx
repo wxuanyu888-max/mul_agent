@@ -46,6 +46,14 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
   const TABLE2_PAGE_SIZE = 10;
   // 不判断是否超过页数，始终显示分页控件
 
+  // 分页状态 - 表 3（Tool 调用明细）
+  const [table3Page, setTable3Page] = useState(1);
+  const TABLE3_PAGE_SIZE = 10;
+
+  // 分页状态 - 表 4（Tool 调用统计）
+  const [table4Page, setTable4Page] = useState(1);
+  const TABLE4_PAGE_SIZE = 10;
+
   // 加载所有 Agent 的 Token 使用数据和日志
   const loadAllUsage = async () => {
     setLoading(true);
@@ -64,18 +72,20 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
     }
   };
 
-  // 单独加载日志的方法
+  // 单独加载日志的方法（限制加载数量）
   const loadAllLogs = async (allUsage: AllAgentsTokenUsage) => {
     setLoadingLogs(true);
     try {
       const allLogsData: MergedLLMLog[] = [];
       const agents = Object.keys(allUsage);
+      const MAX_LOGS_PER_AGENT = 50; // 限制每个 agent 最多加载 50 条
 
       await Promise.all(
         agents.map(async (agentId) => {
           try {
             const agentResponse = await tokenUsageApi.get(agentId);
-            const logs = agentResponse?.data?.llm_logs || [];
+            // 只取前 MAX_LOGS_PER_AGENT 条
+            const logs = (agentResponse?.data?.llm_logs || []).slice(0, MAX_LOGS_PER_AGENT);
             logs.forEach((log: LLMCallLog) => {
               allLogsData.push({
                 agent_id: agentId,
@@ -85,15 +95,15 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
             });
           } catch (err) {
             console.error(`Failed to load logs for ${agentId}:`, err);
-            // Continue loading other agents' logs even if one fails
           }
         })
       );
 
       // 按时间戳倒序排列
       allLogsData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      // 设置日志数据
-      setAllLogs(allLogsData);
+      // 限制总数量
+      const MAX_TOTAL_LOGS = 200;
+      setAllLogs(allLogsData.slice(0, MAX_TOTAL_LOGS));
     } catch (err) {
       console.error('Failed to load logs:', err);
     } finally {
@@ -127,6 +137,76 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
   );
   const table2TotalPages = Math.ceil(allLogs.length / TABLE2_PAGE_SIZE);
 
+  // 表 3：Tool 调用统计 - 聚合所有 tool_calls
+  const toolUsageStats = React.useMemo(() => {
+    const stats: Record<string, { count: number; agents: Set<string> }> = {};
+    allLogs.forEach(log => {
+      const toolCalls = log.tool_calls || [];
+      toolCalls.forEach(tool => {
+        if (!stats[tool.name]) {
+          stats[tool.name] = { count: 0, agents: new Set() };
+        }
+        stats[tool.name].count++;
+        stats[tool.name].agents.add(log.agent_id);
+      });
+    });
+    // 转换为数组并排序
+    return Object.entries(stats)
+      .map(([toolName, data]) => ({
+        toolName,
+        count: data.count,
+        agents: Array.from(data.agents),
+        agentCount: data.agents.size
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [allLogs]);
+
+  // 表 3：Tool 调用明细 - 展开每个 tool_call 作为单独记录
+  const detailedToolCalls = React.useMemo(() => {
+    const calls: Array<{
+      id: string;
+      agent_id: string;
+      timestamp: string;
+      toolName: string;
+      input: string;
+      llmTimestamp: string;
+      llmModel: string;
+    }> = [];
+    const MAX_TOOL_CALLS = 200; // 限制总条数
+
+    allLogs.forEach((log, logIdx) => {
+      const toolCalls = log.tool_calls || [];
+      toolCalls.forEach((tool, toolIdx) => {
+        if (calls.length < MAX_TOOL_CALLS) {
+          calls.push({
+            id: `${log.agent_id}-${log.timestamp}-${toolIdx}`,
+            agent_id: log.agent_id,
+            timestamp: log.timestamp,
+            toolName: tool.name,
+            input: tool.input || '{}',
+            llmTimestamp: log.timestamp,
+            llmModel: log.model,
+          });
+        }
+      });
+    });
+    // 按时间倒序
+    return calls.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [allLogs]);
+
+  const table3TotalPages = Math.ceil(detailedToolCalls.length / TABLE3_PAGE_SIZE);
+  const table3PageData = detailedToolCalls.slice(
+    (table3Page - 1) * TABLE3_PAGE_SIZE,
+    table3Page * TABLE3_PAGE_SIZE
+  );
+
+  // 表 4：Tool 调用统计
+  const table4TotalPages = Math.ceil(toolUsageStats.length / TABLE4_PAGE_SIZE);
+  const table4PageData = toolUsageStats.slice(
+    (table4Page - 1) * TABLE4_PAGE_SIZE,
+    table4Page * TABLE4_PAGE_SIZE
+  );
+
   // 页码改变时的处理 - 滚回表格顶部
   const handleTable1PageChange = (newPage: number) => {
     setTable1Page(newPage);
@@ -135,6 +215,14 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
   const handleTable2PageChange = (newPage: number) => {
     setTable2Page(newPage);
     setExpandedLogIds(new Set()); // 展开的行重置
+  };
+
+  const handleTable3PageChange = (newPage: number) => {
+    setTable3Page(newPage);
+  };
+
+  const handleTable4PageChange = (newPage: number) => {
+    setTable4Page(newPage);
   };
 
   // 使用 row key 来管理展开状态，而不是索引
@@ -259,21 +347,22 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
               <tr>
-                <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium w-12"></th>
-                <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">时间戳</th>
-                <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Agent</th>
-                <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">模型</th>
-                <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">功能</th>
-                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">输入</th>
-                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">输出</th>
-                <th className="text-right py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">总计</th>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium w-8"></th>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">时间</th>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">Agent</th>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">模型</th>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">功能</th>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">工具调用</th>
+                <th className="text-right py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">输入</th>
+                <th className="text-right py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">输出</th>
+                <th className="text-right py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">总计</th>
               </tr>
             </thead>
             <tbody>
               {/* 加载中状态 */}
               {loadingLogs && (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <td colSpan={9} className="text-center py-8 text-gray-500 dark:text-gray-400">
                     <div className="flex items-center justify-center gap-2">
                       <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -317,12 +406,30 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
                       <td className="py-3 px-4 text-gray-500 dark:text-gray-400">
                         {log.model}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-2">
                         <span className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                           {funcNames[log.function] || log.function}
                         </span>
                       </td>
-                      <td className="text-right py-3 px-4 text-purple-600 dark:text-purple-400">
+                      <td className="py-3 px-2">
+                        {log.tool_calls && log.tool_calls.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {log.tool_calls.slice(0, 3).map((tool, idx) => (
+                              <span key={idx} className="px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                                {tool.name}
+                              </span>
+                            ))}
+                            {log.tool_calls.length > 3 && (
+                              <span className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
+                                +{log.tool_calls.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
+                        )}
+                      </td>
+                      <td className="text-right py-3 px-2 text-purple-600 dark:text-purple-400">
                         {formatNumber(log.input_tokens)}
                       </td>
                       <td className="text-right py-3 px-4 text-orange-600 dark:text-orange-400">
@@ -619,6 +726,256 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
             <button
               onClick={() => handleTable1PageChange(table1Page + 1)}
               disabled={table1Page === table1TotalPages}
+              className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              下一页
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 表 3：Tool 调用明细 */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          表 3：Tool 调用明细
+          {detailedToolCalls.length > 0 && (
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+              （第 {table3Page}/{table3TotalPages} 页，共 {detailedToolCalls.length} 条记录）
+            </span>
+          )}
+        </h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
+              <tr>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium w-8"></th>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">时间</th>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">Agent</th>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">Tool 名称</th>
+                <th className="text-left py-3 px-2 text-gray-500 dark:text-gray-400 font-medium">输入参数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {table3PageData.length > 0 && table3PageData.map((call, idx) => {
+                const rowKey = call.id;
+                const isExpanded = expandedLogIds.has(rowKey);
+                return (
+                  <React.Fragment key={rowKey}>
+                    <tr
+                      className={`border-t dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
+                        isExpanded ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                      }`}
+                      onClick={() => toggleExpand(rowKey)}
+                    >
+                      <td className="py-3 px-2 text-center">
+                        <svg
+                          className={`w-4 h-4 inline transition-transform ${
+                            isExpanded ? 'rotate-180' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </td>
+                      <td className="py-3 px-2 text-gray-500 dark:text-gray-400">
+                        {formatTime(call.timestamp)}
+                      </td>
+                      <td className="py-3 px-2 font-medium text-gray-900 dark:text-white">
+                        {call.agent_id}
+                      </td>
+                      <td className="py-3 px-2">
+                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                          {call.toolName}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                        {call.input.slice(0, 100)}{call.input.length > 100 ? '...' : ''}
+                      </td>
+                    </tr>
+                    {/* 展开的详细信息 */}
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={5} className="border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                          <div className="p-4 space-y-3">
+                            <div>
+                              <span className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase">
+                                Tool 输入参数
+                              </span>
+                              <pre className="mt-1 p-3 bg-white dark:bg-gray-800 rounded text-xs overflow-x-auto border dark:border-gray-700">
+                                {JSON.stringify(JSON.parse(call.input || '{}'), null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+              {detailedToolCalls.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    暂无 Tool 调用记录
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {/* 分页控件 - 表 3 */}
+        {table3TotalPages > 1 && (
+          <div className="flex items-center justify-between mt-3">
+            <button
+              onClick={() => handleTable3PageChange(table3Page - 1)}
+              disabled={table3Page === 1}
+              className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              上一页
+            </button>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              第 {table3Page} / {table3TotalPages} 页
+            </span>
+            <button
+              onClick={() => handleTable3PageChange(table3Page + 1)}
+              disabled={table3Page === table3TotalPages}
+              className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              下一页
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 表 4：Tool 调用统计 */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          表 4：Tool 调用统计
+          {toolUsageStats.length > 0 && (
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+              （第 {table4Page}/{table4TotalPages} 页，共 {toolUsageStats.length} 种工具）
+            </span>
+          )}
+        </h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th className="text-center py-3 px-3 text-gray-500 dark:text-gray-400 font-medium w-16">排名</th>
+                <th className="text-left py-3 px-3 text-gray-500 dark:text-gray-400 font-medium w-40">Tool 名称</th>
+                <th className="text-center py-3 px-3 text-gray-500 dark:text-gray-400 font-medium w-28">调用次数</th>
+                <th className="text-left py-3 px-3 text-gray-500 dark:text-gray-400 font-medium flex-1">使用的 Agent</th>
+                <th className="text-center py-3 px-3 text-gray-500 dark:text-gray-400 font-medium w-32">使用率</th>
+              </tr>
+            </thead>
+            <tbody>
+              {table4PageData.length > 0 && table4PageData.map((stat, idx) => {
+                const globalIdx = (table4Page - 1) * TABLE4_PAGE_SIZE + idx;
+                const percentage = toolUsageStats.length > 0
+                  ? ((stat.count / toolUsageStats.reduce((sum, s) => sum + s.count, 0)) * 100).toFixed(1)
+                  : '0';
+                return (
+                  <tr key={stat.toolName} className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="py-3 px-3 text-center text-gray-500 dark:text-gray-400 w-16">
+                      {globalIdx + 1}
+                    </td>
+                    <td className="py-3 px-3 font-medium text-gray-900 dark:text-white w-40">
+                      {stat.toolName}
+                    </td>
+                    <td className="py-3 px-3 text-center text-green-600 dark:text-green-400 font-semibold w-28">
+                      {formatNumber(stat.count)}
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="flex flex-wrap gap-1">
+                        {stat.agents.slice(0, 3).map(agent => (
+                          <span key={agent} className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                            {agent}
+                          </span>
+                        ))}
+                        {stat.agents.length > 3 && (
+                          <span className="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">
+                            +{stat.agents.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-center w-32">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div
+                            className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 w-10 text-right">
+                          {percentage}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {toolUsageStats.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    暂无 Tool 调用记录
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            <tfoot className="bg-gray-100 dark:bg-gray-900/50">
+              <tr className="font-semibold">
+                <td className="py-3 px-4 text-gray-900 dark:text-white">合计</td>
+                <td className="py-3 px-4 text-gray-900 dark:text-white">{toolUsageStats.length} 种工具</td>
+                <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">
+                  {formatNumber(toolUsageStats.reduce((sum, s) => sum + s.count, 0))}
+                </td>
+                <td colSpan={2}></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        {/* 分页控件 - 表 4 */}
+        {table4TotalPages > 1 && (
+          <div className="flex items-center justify-between mt-3">
+            <button
+              onClick={() => handleTable4PageChange(table4Page - 1)}
+              disabled={table4Page === 1}
+              className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              上一页
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, table4TotalPages) }, (_, i) => {
+                let pageNum;
+                if (table4TotalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (table4Page <= 3) {
+                  pageNum = i + 1;
+                } else if (table4Page >= table4TotalPages - 2) {
+                  pageNum = table4TotalPages - 4 + i;
+                } else {
+                  pageNum = table4Page - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handleTable4PageChange(pageNum)}
+                    className={`w-8 h-8 text-sm rounded ${
+                      table4Page === pageNum
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => handleTable4PageChange(table4Page + 1)}
+              disabled={table4Page === table4TotalPages}
               className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               下一页
