@@ -1,0 +1,15 @@
+{
+  "id": 6,
+  "subject": "Task B - Blocked by A",
+  "description": "Depends on A",
+  "status": "pending",
+  "owner": "",
+  "blockedBy": [
+    5
+  ],
+  "blocks": [
+    7
+  ],
+  "createdAt": 1774020607576,
+  "updatedAt": 1774020607596
+}

@@ -169,6 +169,7 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
       timestamp: string;
       toolName: string;
       input: string;
+      output?: string;
       llmTimestamp: string;
       llmModel: string;
     }> = [];
@@ -184,6 +185,7 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
             timestamp: log.timestamp,
             toolName: tool.name,
             input: tool.input || '{}',
+            output: tool.output,
             llmTimestamp: log.timestamp,
             llmModel: log.model,
           });
@@ -800,9 +802,10 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
                       <tr>
                         <td colSpan={5} className="border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                           <div className="p-4 space-y-3">
+                            {/* 输入参数 */}
                             <div>
                               <span className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase">
-                                Tool 输入参数
+                                📥 输入参数
                               </span>
                               <pre className="mt-1 p-3 bg-white dark:bg-gray-800 rounded text-xs overflow-x-auto border dark:border-gray-700">
                                 {(() => {
@@ -814,6 +817,23 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
                                 })()}
                               </pre>
                             </div>
+                            {/* 返回结果 */}
+                            {call.output && (
+                              <div>
+                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">
+                                  📤 返回结果
+                                </span>
+                                <pre className="mt-1 p-3 bg-white dark:bg-gray-800 rounded text-xs overflow-x-auto border dark:border-gray-700">
+                                  {(() => {
+                                    try {
+                                      return JSON.stringify(JSON.parse(call.output), null, 2);
+                                    } catch {
+                                      return call.output;
+                                    }
+                                  })()}
+                                </pre>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>

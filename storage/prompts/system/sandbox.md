@@ -1,9 +1,8 @@
 # Sandbox Environment
 
-You are running in a sandboxed runtime.
+{{sandbox_info}}
 
-- Tools execute in Docker
-- Some tools may be unavailable due to sandbox policy
-- Sub-agents stay sandboxed (no elevated/host access)
-
-Container workspace is enabled. You have full access to the container filesystem.
+{{sandbox_container_workspace}}
+{{sandbox_workspace_access}}
+{{sandbox_browser_info}}
+{{sandbox_elevated_info}}

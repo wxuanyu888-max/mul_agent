@@ -1,0 +1,29 @@
+{
+  "id": "mmy8acul_w9tk0sw",
+  "label": "test-subagent",
+  "createdAt": 1773970591629,
+  "updatedAt": 1773970591632,
+  "status": "active",
+  "config": {
+    "runtime": "subagent",
+    "model": "claude-sonnet-4-20250514",
+    "temperature": 1,
+    "tools": []
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": {
+        "type": "text",
+        "text": "请回复 \"Hello from subagent!\" 并等待我的下一条指令。"
+      },
+      "timestamp": 1773970591631
+    }
+  ],
+  "toolCalls": [],
+  "usage": {
+    "input": 0,
+    "output": 0,
+    "total": 0
+  }
+}

@@ -2,7 +2,7 @@
  * 提示词构建器类型定义
  */
 
-import type { Tool } from '../types.js';
+import type { Tool, LoadedItem } from '../types.js';
 
 /**
  * 提示词构建配置
@@ -10,6 +10,10 @@ import type { Tool } from '../types.js';
 export interface PromptBuilderConfig {
   /** 工作目录 */
   workspaceDir: string;
+  /** Session ID（用于工作区划分） */
+  sessionId?: string;
+  /** 当前会话生成的文件 */
+  generatedFiles?: Array<{ path: string; name: string; timestamp: number }>;
   /** 额外系统提示 */
   extraSystemPrompt?: string;
   /** 提示模式 */
@@ -47,6 +51,8 @@ export interface SkillInfo {
   name: string;
   description: string;
   location?: string;
+  content?: string;    // 已加载的完整内容
+  isLoaded?: boolean;  // 是否已加载
 }
 
 /**
@@ -76,4 +82,6 @@ export interface BuildContext {
   runtime?: RuntimeInfo;
   sessionKey?: string;
   messageCount?: number;
+  loadedItems?: LoadedItem[];  // 已加载的 skill/MCP 内容
+  isReviewRound?: boolean;     // 是否是审查轮次
 }

@@ -8,7 +8,7 @@ const mockVi = (globalThis as any).vi || ((...args: unknown[]) => ({ mockImpleme
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: mockVi.mockImplementation ? mockVi.fn().mockImplementation(query => ({
+  value: mockVi.mockImplementation ? mockVi.fn().mockImplementation((query: string) => ({
     matches: false,
     media: query,
     onchange: null,

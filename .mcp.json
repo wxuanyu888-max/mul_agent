@@ -4,6 +4,11 @@
       "command": "/Users/agent/.vscode/extensions/highagency.pencildev-0.6.30/out/mcp-server-darwin-x64",
       "args": ["--app", "visual_studio_code"],
       "description": "Pencil MCP for UI/UX design guidelines"
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-chrome-devtools"],
+      "description": "Chrome DevTools MCP for browser automation"
     }
   }
 }

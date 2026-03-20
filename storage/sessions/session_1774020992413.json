@@ -1,0 +1,16 @@
+{
+  "sessionId": "session_1774020992413",
+  "updatedAt": 1774021002398,
+  "messages": [
+    {
+      "role": "user",
+      "content": "列出你目前可用的所有工具名称",
+      "timestamp": 1774021002398
+    },
+    {
+      "role": "assistant",
+      "content": "我目前可用的所有工具名称如下：\n\n| 序号 | 工具名称 | 功能描述 |\n|------|----------|----------|\n| 1 | `task` | 任务管理 - 创建和管理子任务 |\n| 2 | `compact` | 手动触发上下文压缩 |\n| 3 | `workspace_refresh` | 刷新生成的文件列表 |\n| 4 | `web_search` | 网络搜索（需要BRAVE_API_KEY） |\n| 5 | `web_fetch` | 获取URL内容并保存到工作区文件 |\n| 6 | `video` | 视频分析 - 下载、处理、提取音频和转录 |\n| 7 | `browser_mcp` | 通过MCP控制浏览器 - 截图、导航、点击、填表等 |\n| 8 | `memory` | 内存管理 - 搜索、读取、写入记忆文件 |\n| 9 | `sessions` | 会话管理 - 列出、查看历史、发送消息、创建新会话等 |\n| 10 | `cron` | 管理cron作业和唤醒事件 |\n| 11 | `subagents` | 列出、引导或终止子代理运行 |\n| 12 | `agents_list` | 列出可用的代理ID |\n| 13 | `read` | 读取文件内容 |\n| 14 | `write` | 写入文件内容（创建或覆盖） |\n| 15 | `edit` | 编辑文件（替换特定字符串） |\n| 16 | `grep` | 在工作区文件中进行语义搜索 |\n| 17 | `find` | 按名称模式查找文件 |\n| 18 | `ls` | 列出目录内容 |\n| 19 | `exec` | 执行shell命令 |\n| 20 | `load` | 加载skill或MCP到当前对话上下文 |\n\n此外，我还有3个可用技能（Skills）：\n- `coding-agent` - 编码任务委托\n- `gh-issues` - GitHub问题管理\n- `github` - GitHub操作\n\n如需了解某个工具的详细用法，请告诉我！",
+      "timestamp": 1774021002398
+    }
+  ]
+}

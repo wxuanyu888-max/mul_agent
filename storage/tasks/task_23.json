@@ -1,0 +1,12 @@
+{
+  "id": 23,
+  "subject": "Integration Test - Second Task",
+  "description": "This has lower priority",
+  "status": "pending",
+  "priority": 100,
+  "blockedBy": [],
+  "blocks": [],
+  "owner": "",
+  "createdAt": 1774021237552,
+  "updatedAt": 1774021237552
+}

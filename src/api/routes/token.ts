@@ -57,31 +57,59 @@ function transformLlmLogForFrontend(log: LlmCallLog): Record<string, unknown> {
     }
   }
 
-  // 提取 tool_calls - 从 rawRequest.messages 中的 assistant 消息提取
-  // MiniMax API 将 tool_calls 以 JSON 字符串形式嵌入在消息 content 中
+  // 提取 tool_calls 和 tool_results
+  // 关键：只从 rawRequest.messages 中最后一条 assistant 消息提取 tool_calls
+  // 因为每条 LLM 日志都包含完整历史，只取最后一条才能避免重复统计
+  interface ToolCallWithResult {
+    id: string;
+    name: string;
+    input: string;
+    output?: string;
+  }
+  const toolCallsMap: Map<string, ToolCallWithResult> = new Map();
+
   if (log.rawRequest?.messages) {
-    for (const msg of log.rawRequest.messages) {
-      if (msg.role === 'assistant' && msg.content) {
-        const content = typeof msg.content === 'string' ? msg.content : '';
-        // 尝试从 content 中提取 tool_calls JSON
-        try {
-          // 匹配 {"tool_calls":[...]} 格式
-          const toolCallsMatch = content.match(/\{[\s\S]*"tool_calls"[\s\S]*\}/);
-          if (toolCallsMatch) {
-            const parsed = JSON.parse(toolCallsMatch[0]);
-            if (parsed.tool_calls && Array.isArray(parsed.tool_calls)) {
-              for (const tc of parsed.tool_calls) {
-                toolCalls.push({
-                  name: tc.name || tc.function?.name || 'unknown',
-                  input: typeof tc.input === 'string'
-                    ? tc.input
-                    : JSON.stringify(tc.input || tc.function?.arguments || {}),
-                });
-              }
+    const messages = log.rawRequest.messages;
+
+    // 找到最后一条 assistant 消息（包含本次 LLM 调用返回的 tool_calls）
+    let lastAssistantMsg = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant' && messages[i].content) {
+        lastAssistantMsg = messages[i];
+        break;
+      }
+    }
+
+    // 从最后一条 assistant 消息提取 tool_calls
+    if (lastAssistantMsg) {
+      const content = typeof lastAssistantMsg.content === 'string' ? lastAssistantMsg.content : '';
+      try {
+        const toolCallsMatch = content.match(/\{[\s\S]*"tool_calls"[\s\S]*\}/);
+        if (toolCallsMatch) {
+          const parsed = JSON.parse(toolCallsMatch[0]);
+          if (parsed.tool_calls && Array.isArray(parsed.tool_calls)) {
+            for (const tc of parsed.tool_calls) {
+              const id = tc.id || tc.function?.id || `tc_${Math.random().toString(36).substring(7)}`;
+              const name = tc.name || tc.function?.name || 'unknown';
+              const input = typeof tc.input === 'string'
+                ? tc.input
+                : JSON.stringify(tc.input || tc.function?.arguments || {});
+              toolCallsMap.set(id, { id, name, input });
             }
           }
-        } catch {
-          // 忽略解析错误
+        }
+      } catch {
+        // 忽略解析错误
+      }
+    }
+
+    // 提取 user 消息中的 tool_result（通过 tool_call_id 关联）
+    // 这里遍历所有 user 消息，找到对应的 tool_result
+    for (const msg of messages) {
+      if (msg.role === 'user' && msg.tool_call_id && msg.content) {
+        const existing = toolCallsMap.get(msg.tool_call_id);
+        if (existing) {
+          existing.output = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
         }
       }
     }
@@ -90,14 +118,19 @@ function transformLlmLogForFrontend(log: LlmCallLog): Record<string, unknown> {
   // 也尝试从 rawResponse 提取 tool_calls（如果有的话）
   if (log.rawResponse?.tool_calls && Array.isArray(log.rawResponse.tool_calls)) {
     for (const tc of log.rawResponse.tool_calls) {
-      toolCalls.push({
-        name: tc.function?.name || tc.name || 'unknown',
-        input: typeof tc.function?.arguments === 'string'
-          ? tc.function.arguments
-          : JSON.stringify(tc.function?.arguments || {}),
-      });
+      const id = tc.id || `tc_${Math.random().toString(36).substring(7)}`;
+      const name = tc.function?.name || tc.name || 'unknown';
+      const input = typeof tc.function?.arguments === 'string'
+        ? tc.function.arguments
+        : JSON.stringify(tc.function?.arguments || {});
+      if (!toolCallsMap.has(id)) {
+        toolCallsMap.set(id, { id, name, input });
+      }
     }
   }
+
+  // 转换为数组
+  toolCalls = Array.from(toolCallsMap.values());
 
   return {
     timestamp: new Date(log.timestamp).toISOString(),
@@ -137,7 +170,9 @@ export function createTokenRouter(): Router {
 
     // 查询 LLM 日志中的所有 agent
     const logs = await queryLlmLogs({ limit: 1000 });
-    const agentIds = new Set(logs.map((log) => log.agentId).filter(Boolean));
+    const agentIds = new Set(
+      logs.map((log) => log.agentId).filter((id): id is string => Boolean(id))
+    );
 
     // 为每个有日志的 agent 添加统计
     for (const agentId of agentIds) {

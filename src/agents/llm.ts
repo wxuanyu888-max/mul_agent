@@ -46,9 +46,12 @@ export interface LLMResponse {
   type: string;
   role: string;
   content: Array<{
-    type: 'text' | 'thinking';
+    type: 'text' | 'thinking' | 'tool_use';
     text?: string;
     thinking?: string;
+    id?: string;
+    name?: string;
+    input?: Record<string, unknown>;
   }>;
   model: string;
   stop_reason: string;

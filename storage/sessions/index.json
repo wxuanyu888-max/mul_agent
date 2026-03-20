@@ -1,1 +1,274 @@
-{}
+{
+  "session_1773823780352": {
+    "id": "session_1773823780352",
+    "label": "你帮我在tmux的mysesstion里面发一个hello让我看到",
+    "createdAt": 1773834706054,
+    "updatedAt": 1773834706054,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773817841488": {
+    "id": "session_1773817841488",
+    "label": "你好",
+    "createdAt": 1773821232545,
+    "updatedAt": 1773821232545,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773884189914": {
+    "id": "session_1773884189914",
+    "label": "请执行 echo \"test1\" 命令",
+    "createdAt": 1773884485027,
+    "updatedAt": 1773884485027,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773834313623": {
+    "id": "session_1773834313623",
+    "label": "请执行 `python -c \"import docx; print(\"python-docx ve",
+    "createdAt": 1773834318106,
+    "updatedAt": 1773834318106,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773816777386": {
+    "id": "session_1773816777386",
+    "label": "你好",
+    "createdAt": 1773816781025,
+    "updatedAt": 1773816781025,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773884967615": {
+    "id": "session_1773884967615",
+    "label": "test",
+    "createdAt": 1773884970228,
+    "updatedAt": 1773884970228,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773744341748": {
+    "id": "session_1773744341748",
+    "label": "Test message",
+    "createdAt": 1773744344733,
+    "updatedAt": 1773744344733,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773805262986": {
+    "id": "session_1773805262986",
+    "label": "你能为我干什么",
+    "createdAt": 1773805269951,
+    "updatedAt": 1773805269951,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773885788389": {
+    "id": "session_1773885788389",
+    "label": "what is my workspace?",
+    "createdAt": 1773885792548,
+    "updatedAt": 1773885792548,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773844692495": {
+    "id": "session_1773844692495",
+    "label": "你现在有哪些 skills 可用？",
+    "createdAt": 1773844708145,
+    "updatedAt": 1773844708145,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773744342047": {
+    "id": "session_1773744342047",
+    "label": "Test message",
+    "createdAt": 1773744344013,
+    "updatedAt": 1773744344013,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773794419061": {
+    "id": "session_1773794419061",
+    "label": "帮我找一下mul-agent的文件路径",
+    "createdAt": 1773823067291,
+    "updatedAt": 1773823067291,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773884570692": {
+    "id": "session_1773884570692",
+    "label": "hello",
+    "createdAt": 1773884575450,
+    "updatedAt": 1773884575450,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773910510844": {
+    "id": "session_1773910510844",
+    "label": "你好",
+    "createdAt": 1773974424635,
+    "updatedAt": 1773974424635,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773884930988": {
+    "id": "session_1773884930988",
+    "label": "hi",
+    "createdAt": 1773884936311,
+    "updatedAt": 1773884936311,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773884404937": {
+    "id": "session_1773884404937",
+    "label": "ls",
+    "createdAt": 1773884454543,
+    "updatedAt": 1773884454543,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773834259871": {
+    "id": "session_1773834259871",
+    "label": "请执行 `echo \"hello world\"` 命令",
+    "createdAt": 1773834266243,
+    "updatedAt": 1773834266243,
+    "status": "active",
+    "config": {}
+  },
+  "7c691930-a23a-4aa1-a296-ef34e6f0091f": {
+    "id": "7c691930-a23a-4aa1-a296-ef34e6f0091f",
+    "label": "你好",
+    "createdAt": 1773745718928,
+    "updatedAt": 1773745718928,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773885873517": {
+    "id": "session_1773885873517",
+    "label": "hi",
+    "createdAt": 1773885879503,
+    "updatedAt": 1773885879503,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773884331367": {
+    "id": "session_1773884331367",
+    "label": "hello",
+    "createdAt": 1773884334240,
+    "updatedAt": 1773884334240,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773834081035": {
+    "id": "session_1773834081035",
+    "label": "请执行 `echo \"test output\"` 命令",
+    "createdAt": 1773834152241,
+    "updatedAt": 1773834152241,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773835793860": {
+    "id": "session_1773835793860",
+    "label": "ls -la /Users/agent/Desktop/",
+    "createdAt": 1773835802393,
+    "updatedAt": 1773835802393,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773794075408": {
+    "id": "session_1773794075408",
+    "label": "你好",
+    "createdAt": 1773794077204,
+    "updatedAt": 1773794077204,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773835692517": {
+    "id": "session_1773835692517",
+    "label": "请执行 `ls -la /Users/agent/Desktop/` 命令",
+    "createdAt": 1773835852354,
+    "updatedAt": 1773835852354,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773833991445": {
+    "id": "session_1773833991445",
+    "label": "请执行 `pip show python-docx` 命令查看是否已安装 python-docx",
+    "createdAt": 1773834031689,
+    "updatedAt": 1773834031689,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773978185316": {
+    "id": "session_1773978185316",
+    "label": "你好，你的模型是什么·",
+    "createdAt": 1773978502735,
+    "updatedAt": 1773978502735,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773886034620": {
+    "id": "session_1773886034620",
+    "label": "hi",
+    "createdAt": 1773886043518,
+    "updatedAt": 1773886043518,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773745867288": {
+    "id": "session_1773745867288",
+    "label": "你帮我找一下我的mul-agent的文件夹目录",
+    "createdAt": 1773745881014,
+    "updatedAt": 1773745881014,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773884846561": {
+    "id": "session_1773884846561",
+    "label": "hello",
+    "createdAt": 1773884850798,
+    "updatedAt": 1773884850798,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773966390193": {
+    "id": "session_1773966390193",
+    "label": "创建一个任务，主题是测试LLM创建任务",
+    "createdAt": 1773966406798,
+    "updatedAt": 1773966406798,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773884636543": {
+    "id": "session_1773884636543",
+    "label": "hello",
+    "createdAt": 1773884674472,
+    "updatedAt": 1773884674472,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773885735337": {
+    "id": "session_1773885735337",
+    "label": "hello",
+    "createdAt": 1773885739596,
+    "updatedAt": 1773885739596,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773834282300": {
+    "id": "session_1773834282300",
+    "label": "请执行 `pip install python-docx -q` 安装 python-docx 包",
+    "createdAt": 1773834289393,
+    "updatedAt": 1773834289393,
+    "status": "active",
+    "config": {}
+  },
+  "session_1773744251019": {
+    "id": "session_1773744251019",
+    "label": "Test message",
+    "createdAt": 1773744349489,
+    "updatedAt": 1773744349489,
+    "status": "active",
+    "config": {}
+  }
+}

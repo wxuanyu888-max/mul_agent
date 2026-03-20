@@ -218,7 +218,7 @@ export function createChatRouter(): Router {
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
-          timestamp: new Date(m.timestamp).toISOString(),
+          timestamp: new Date(m.timestamp || Date.now()).toISOString(),
         })),
         total: session.messages?.length || 0,
       });
@@ -290,6 +290,7 @@ export function createChatRouter(): Router {
       const agent = new AgentLoop({
         maxIterations: 50,
         workspaceDir: process.cwd(),
+        sessionId: session_id,
         promptMode: 'full',
 
         // 回调：工具确认（自动确认执行）
@@ -297,15 +298,7 @@ export function createChatRouter(): Router {
           return true;
         },
 
-        // 回调：工具执行
-        onToolExecute: (tool, result) => {
-          res.write(`data: ${JSON.stringify({
-            type: 'tool',
-            tool: tool.name,
-            input: tool.input,
-            result: result.output.substring(0, 500)
-          })}\n\n`);
-        },
+        // 回调：工具执行（工具结果已包含在消息历史中，无需单独发给前端）
 
         // 回调：LLM 调用
         onLlmCall: (messages, systemPrompt) => {

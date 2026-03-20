@@ -113,6 +113,7 @@ export interface DateTokenStats {
 export interface ToolCall {
   name: string;
   input: string;
+  output?: string;
 }
 
 export interface LLMCallLog {
@@ -210,6 +211,7 @@ export interface Task {
   subject: string;
   description: string;
   status: TaskStatus;
+  priority?: number;     // Lower number = higher priority
   owner?: string;
   blockedBy: string[];  // IDs of tasks that block this task
   blocks: string[];     // IDs of tasks that this task blocks
@@ -220,6 +222,7 @@ export interface Task {
 export interface TaskFormData {
   subject: string;
   description: string;
+  priority?: number;
   owner?: string;
   blockedBy?: string[];
 }

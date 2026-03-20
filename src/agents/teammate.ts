@@ -85,6 +85,41 @@ function saveConfig(config: { teammates: TeammateInfo[] }): void {
  */
 class TeammateManagerClass {
   private teammates: Map<string, TeammateEntry> = new Map();
+  private syncInterval: NodeJS.Timeout | null = null;
+
+  constructor() {
+    // 启动定期同步（每 30 秒）
+    this.startSync();
+  }
+
+  /**
+   * 启动定期同步
+   */
+  private startSync(): void {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+    }
+    this.syncInterval = setInterval(() => {
+      this.persistAll();
+    }, 30000);
+  }
+
+  /**
+   * 持久化所有队友状态到文件
+   */
+  private persistAll(): void {
+    const configData = loadConfig();
+
+    // 从内存更新状态
+    for (const entry of this.teammates.values()) {
+      const idx = configData.teammates.findIndex(t => t.name === entry.info.name);
+      if (idx >= 0) {
+        configData.teammates[idx] = entry.info;
+      }
+    }
+
+    saveConfig(configData);
+  }
 
   /**
    * 创建并启动队友
@@ -224,7 +259,22 @@ class TeammateManagerClass {
     // 从内存中移除
     this.teammates.delete(name);
 
+    // 持久化状态
+    this.persistAll();
+
     return `Teammate "${name}" shut down`;
+  }
+
+  /**
+   * 清理资源
+   */
+  destroy(): void {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = null;
+    }
+    // 关闭前持久化所有状态
+    this.persistAll();
   }
 
   /**
@@ -280,6 +330,8 @@ class TeammateManagerClass {
     if (entry && !entry.running) {
       entry.running = true;
       entry.info.status = 'WORKING';
+      // 持久化状态变更
+      this.persistAll();
     }
 
     return `Message sent to ${to}`;

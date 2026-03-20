@@ -1,0 +1,12 @@
+{
+  "id": 19,
+  "subject": "Test Autonomous Agent",
+  "description": "Please complete this task: echo hello from autonomous agent",
+  "status": "pending",
+  "priority": 100,
+  "owner": "",
+  "blockedBy": [],
+  "blocks": [],
+  "createdAt": 1774021102352,
+  "updatedAt": 1774021102352
+}

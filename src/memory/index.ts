@@ -74,3 +74,16 @@ export {
 
 // Routes
 export { createMemoryRouter } from './routes.js';
+
+// Team Memory
+export {
+  getTeamMemoryManager,
+  teamMemoryWrite,
+  teamMemoryRead,
+  teamMemoryList,
+  teamMemoryListByAgent,
+  teamMemoryDelete,
+  teamMemoryCleanup,
+  teamMemoryStats,
+  type TeamMemoryEntry,
+} from './team.js';

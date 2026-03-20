@@ -1,0 +1,16 @@
+{
+  "sessionId": "session_1774020017849",
+  "updatedAt": 1774020025764,
+  "messages": [
+    {
+      "role": "user",
+      "content": "请使用 browser_mcp 工具打开浏览器访问 github.com 并截图",
+      "timestamp": 1774020025764
+    },
+    {
+      "role": "assistant",
+      "content": "抱歉，我查看了当前可用的工具列表，**没有 browser_mcp 这个工具**。\n\n当前可用的工具包括：\n- 文件操作：`read`, `write`, `edit`, `grep`, `find`, `ls`\n- 命令执行：`exec`\n- 任务管理：`task`, `task_create`, `task_list`, `task_get`, `task_update`\n- 会话管理：`sessions`, `sessions_list`, `sessions_history`, `sessions_send`, `sessions_spawn`\n- 内存管理：`memory`, `memory_search`, `memory_write`\n- 其他：`web_search`, `web_fetch`, `video`, `cron`, `compact`, `subagents`, `agents_list`\n\n虽然系统提示提到 \"Browser automation is available\"，但我的工具列表中并没有浏览器自动化工具（如 browser_mcp 或类似的工具）。\n\n如果您需要访问 github.com，您可以：\n1. 确认是否有其他 MCP 工具可用\n2. 或者我可以尝试使用 `web_fetch` 工具来获取网页内容（虽然这不是真正的浏览器截图）\n\n需要我使用 `web_fetch` 来获取 github.com 的内容吗？",
+      "timestamp": 1774020025764
+    }
+  ]
+}

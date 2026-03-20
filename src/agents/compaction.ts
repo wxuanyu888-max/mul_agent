@@ -71,10 +71,10 @@ function estimateTokens(text: string): number {
  * 将旧的 tool result 替换为占位符，减少每个 turn 的 token 使用
  */
 export function microCompact(
-  messages: any[],
+  messages: Message[],
   config: CompactionConfig = {},
   context?: CompactionContext
-): { messages: any[]; context: CompactionContext } {
+): { messages: Message[]; context: CompactionContext } {
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const ctx: CompactionContext = context ?? createCompactionContext();
 
@@ -148,7 +148,7 @@ export function microCompact(
 /**
  * 从消息中提取工具名称
  */
-function extractToolName(messages: any[], msgIndex: number, partIndex: number): string | undefined {
+function extractToolName(messages: Message[], msgIndex: number, partIndex: number): string | undefined {
   // 向前查找最近的 assistant 消息中的 tool_calls
   for (let i = msgIndex - 1; i >= 0; i--) {
     const msg = messages[i];
@@ -170,7 +170,7 @@ function extractToolName(messages: any[], msgIndex: number, partIndex: number): 
 /**
  * 估算消息列表的 token 数量
  */
-export function estimateMessageTokens(messages: any[]): number {
+export function estimateMessageTokens(messages: Message[]): number {
   return messages.reduce((sum, m) => {
     if (!m) return sum;
 
@@ -191,7 +191,7 @@ export function estimateMessageTokens(messages: any[]): number {
 /**
  * 检查是否需要 auto_compact
  */
-export function needsAutoCompact(messages: any[], threshold: number): boolean {
+export function needsAutoCompact(messages: Message[], threshold: number): boolean {
   return estimateMessageTokens(messages) > threshold;
 }
 
@@ -200,10 +200,10 @@ export function needsAutoCompact(messages: any[], threshold: number): boolean {
  * token 超过阈值时，保存完整对话到磁盘，让 LLM 做摘要
  */
 export async function autoCompact(
-  messages: any[],
+  messages: Message[],
   config: CompactionConfig = {},
   context?: CompactionContext
-): Promise<{ messages: any[]; context: CompactionContext }> {
+): Promise<{ messages: Message[]; context: CompactionContext }> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const ctx: CompactionContext = context ?? createCompactionContext();
 
@@ -326,10 +326,10 @@ function extractTextFromResponse(response: any): string {
  * 手动触发压缩（与 auto_compact 相同逻辑）
  */
 export async function manualCompact(
-  messages: any[],
+  messages: Message[],
   config: CompactionConfig = {},
   context?: CompactionContext
-): Promise<{ messages: any[]; context: CompactionContext }> {
+): Promise<{ messages: Message[]; context: CompactionContext }> {
   return autoCompact(messages, config, context);
 }
 
@@ -402,8 +402,10 @@ function createDefaultSummary(messages: Message[]): Message {
 
   // 时间范围
   if (messages.length > 0) {
-    const start = new Date(messages[0].timestamp).toLocaleDateString();
-    const end = new Date(messages[messages.length - 1].timestamp).toLocaleDateString();
+    const startTime = messages[0].timestamp ?? Date.now();
+    const endTime = messages[messages.length - 1].timestamp ?? Date.now();
+    const start = new Date(startTime).toLocaleDateString();
+    const end = new Date(endTime).toLocaleDateString();
     summaryParts.push(`- Time range: ${start} to ${end}`);
   }
 
@@ -411,7 +413,7 @@ function createDefaultSummary(messages: Message[]): Message {
     id: generateId(),
     role: 'system',
     content: `## Previous Conversation\n${summaryParts.join('\n')}\n\n(Older messages have been summarized)`,
-    timestamp: messages[0].timestamp,
+    timestamp: messages[0].timestamp ?? Date.now(),
   };
 }
 

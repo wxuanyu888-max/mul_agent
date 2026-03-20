@@ -15,7 +15,7 @@
     "noEmitOnError": false,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "strict": false,
+    "strict": true,
     "strictPropertyInitialization": false,
     "target": "ES2023",
     "useDefineForClassFields": false,

@@ -54,15 +54,29 @@ export interface AgentRunResult {
 }
 
 /**
+ * 内容块类型 (用于 tool_result 等)
+ */
+export interface ContentBlock {
+  type: 'text' | 'tool_result' | 'tool_use';
+  text?: string;
+  content?: string;
+  id?: string;
+  name?: string;
+  input?: Record<string, unknown>;
+}
+
+/**
  * 消息类型
+ * 支持多种格式以兼容不同 LLM 提供商
  */
 export interface Message {
-  id: string;
+  id?: string;
   role: 'user' | 'assistant' | 'system' | 'tool';
-  content: string;
+  content: string | ContentBlock[];
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
-  timestamp: number;
+  tool_call_id?: string;  // tool_result 时关联 tool_calls
+  timestamp?: number;
 }
 
 /**
@@ -230,4 +244,53 @@ export interface GatewayCallResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+/**
+ * 已加载的 skill/MCP 项
+ */
+export interface LoadedItem {
+  type: 'skill' | 'mcp';
+  name: string;
+  content: string;      // skill 内容或 MCP 配置
+  loadedAt: number;    // 加载时间戳
+  lastUsedAt: number;   // 最后使用时间
+}
+
+// ============================================================================
+// LLM 消息类型转换
+// ============================================================================
+
+/**
+ * LLM 提供商使用的消息格式 (与 agents/llm.ts 保持一致)
+ */
+export interface LLMMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  tool_calls?: Array<{
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+  }>;
+  tool_call_id?: string;
+  name?: string;  // 用于 tool_result 消息（指定工具名）
+}
+
+/**
+ * 将 Message[] 转换为 LLMMessage[] 用于 LLM 调用
+ * 过滤掉 role 为 'system' 和 'tool' 的消息
+ */
+export function toLLMMessages(messages: Message[]): LLMMessage[] {
+  return messages
+    .filter((m): m is Message & { role: 'user' | 'assistant' } => m.role === 'user' || m.role === 'assistant')
+    .map((m) => ({
+      role: m.role,
+      content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+      tool_calls: m.toolCalls?.map((tc) => ({
+        id: tc.id,
+        name: tc.name,
+        input: tc.input,
+      })),
+      tool_call_id: m.tool_call_id,
+    }));
 }

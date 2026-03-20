@@ -5,3 +5,4 @@ export { createNodesTool } from "./nodes.js";
 export { createTtsTool } from "./tts.js";
 export { createImageTool } from "./image.js";
 export { createPdfTool } from "./pdf.js";
+export { createVideoTool } from "./video.js";

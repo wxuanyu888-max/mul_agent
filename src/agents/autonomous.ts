@@ -130,17 +130,93 @@ class TeamManager {
 }
 
 /**
- * 扫描未认领的任务
+ * 扫描未认领的任务（带依赖检查）
+ *
+ * 增强了对任务依赖的检查：
+ * 1. 只返回 pending 状态的任务
+ * 2. 验证所有 blockedBy 任务确实已完成
+ * 3. 过滤掉已有 owner 的任务
  */
 function scanUnclaimedTasks(taskManager: ReturnType<typeof getTaskManager>): Task[] {
-  const tasks = taskManager.listRunnable();
-  return tasks.filter(task => !task.owner);
+  const allTasks = taskManager.list();
+
+  // 找出所有已完成的任务 ID
+  const completedIds = new Set(
+    allTasks
+      .filter(t => t.status === 'completed')
+      .map(t => t.id)
+  );
+
+  // 过滤出可执行的任务
+  const runnableTasks = allTasks.filter(task => {
+    // 必须是 pending 状态
+    if (task.status !== 'pending') return false;
+
+    // 必须没有 owner
+    if (task.owner) return false;
+
+    // 检查所有依赖任务是否都已完成
+    if (task.blockedBy.length > 0) {
+      const allDepsCompleted = task.blockedBy.every(depId => completedIds.has(depId));
+      if (!allDepsCompleted) return false;
+    }
+
+    return true;
+  });
+
+  // 按优先级排序（数值越小优先级越高），undefined 优先级最低，同优先级按创建时间排序
+  return runnableTasks.sort((a, b) => {
+    const aPriority = a.priority ?? Infinity;
+    const bPriority = b.priority ?? Infinity;
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+    return a.createdAt - b.createdAt;
+  });
 }
 
 /**
- * 认领任务
+ * 认领任务（带原子性检查）
+ *
+ * 增加多重检查确保任务可以被认领：
+ * 1. 任务存在
+ * 2. 任务状态为 pending
+ * 3. 任务没有 owner
+ * 4. 所有依赖任务已完成
  */
 function claimTask(taskManager: ReturnType<typeof getTaskManager>, taskId: number, owner: string): Task | null {
+  // 先获取任务进行验证
+  const existingTask = taskManager.get(taskId);
+  if (!existingTask) {
+    return null;
+  }
+
+  // 检查状态
+  if (existingTask.status !== 'pending') {
+    return null;
+  }
+
+  // 检查已有 owner
+  if (existingTask.owner) {
+    return null;
+  }
+
+  // 检查依赖是否完成
+  if (existingTask.blockedBy.length > 0) {
+    const allTasks = taskManager.list();
+    const completedIds = new Set(
+      allTasks
+        .filter(t => t.status === 'completed')
+        .map(t => t.id)
+    );
+
+    const allDepsCompleted = existingTask.blockedBy.every(depId => completedIds.has(depId));
+    if (!allDepsCompleted) {
+      return null;
+    }
+  }
+
+  // 执行认领
   const task = taskManager.update({
     task_id: taskId,
     status: 'in_progress',

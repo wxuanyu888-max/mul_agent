@@ -53,6 +53,7 @@ export const useTaskStore = create<TaskState>()(
           subject: data.subject,
           description: data.description,
           status: 'pending',
+          priority: data.priority ?? 100,
           owner: data.owner,
           blockedBy: data.blockedBy || [],
           blocks: [],

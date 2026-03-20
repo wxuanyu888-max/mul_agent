@@ -1,0 +1,27 @@
+{
+  "sessionId": "session_1774020833564",
+  "updatedAt": 1774020867516,
+  "messages": [
+    {
+      "role": "user",
+      "content": "请使用 browser_mcp 工具打开 github.com",
+      "timestamp": 1774020867516
+    },
+    {
+      "role": "assistant",
+      "content": "{\"tool_calls\":[{\"id\":\"call_function_07gizmq0sair_1\",\"name\":\"agents_list\",\"input\":{}}]}",
+      "timestamp": 1774020867516
+    },
+    {
+      "role": "user",
+      "content": "{\n  \"agents\": [\n    \"core\"\n  ]\n}",
+      "tool_call_id": "call_function_07gizmq0sair_1",
+      "timestamp": 1774020867516
+    },
+    {
+      "role": "assistant",
+      "content": "抱歉，我检查了可用的工具和代理，但没有找到名为 `browser_mcp` 的工具或浏览器相关的功能。\n\n目前可用的工具主要包括：\n- 文件操作（read, write, edit, find, ls）\n- 代码执行（exec）\n- 搜索（grep, web_search）\n- 任务管理（task）\n- 内存管理（memory）\n- 会话管理（sessions）\n- 视频分析（video）\n- GitHub 操作（通过 gh-issues 和 github 技能）\n\n如果您需要访问 github.com，您可以：\n1. **使用 GitHub CLI**：如果您需要查看仓库信息、PR、issues 等，我可以帮您使用 `gh` 命令\n2. **使用 web_fetch**：我可以抓取网页内容（但不是交互式的浏览器）\n\n请问您具体想对 github.com 做什么操作？",
+      "timestamp": 1774020867516
+    }
+  ]
+}

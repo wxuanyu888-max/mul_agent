@@ -55,9 +55,8 @@ export async function parseDocument(filePath: string): Promise<ParsedDocument> {
  */
 async function parsePDF(filePath: string): Promise<ParsedDocument> {
   try {
-    // Dynamic import to avoid issues if package not available
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - pdf-parse does not have type declarations
+    // pdf-parse 没有类型声明，使用 any 进行类型转换
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pdfParse = await import('pdf-parse') as any;
 
     const dataBuffer = await fs.readFile(filePath);
@@ -87,8 +86,8 @@ async function parsePDF(filePath: string): Promise<ParsedDocument> {
  */
 async function parseDOCX(filePath: string): Promise<ParsedDocument> {
   try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - mammoth does not have type declarations
+    // mammoth 没有类型声明，使用 any 进行类型转换
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mammoth = await import('mammoth') as any;
 
     const result = await mammoth.default.extractRawText({ path: filePath });

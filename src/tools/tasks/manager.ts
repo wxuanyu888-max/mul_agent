@@ -20,6 +20,8 @@ export interface Task {
   description: string;
   /** 任务状态 */
   status: 'pending' | 'in_progress' | 'completed';
+  /** 任务优先级 (数值越小越高) */
+  priority: number;
   /** 阻塞此任务的任务 ID */
   blockedBy: number[];
   /** 被此任务阻塞的任务 ID */
@@ -36,6 +38,7 @@ export interface TaskCreateParams {
   subject: string;
   description?: string;
   owner?: string;
+  priority?: number;
   blockedBy?: number[];
   blocks?: number[];
 }
@@ -46,6 +49,7 @@ export interface TaskUpdateParams {
   subject?: string;
   description?: string;
   owner?: string;
+  priority?: number;
   add_blocked_by?: number[];
   add_blocks?: number[];
   remove_blocked_by?: number[];
@@ -155,6 +159,7 @@ export class TaskManager {
       subject: params.subject,
       description: params.description || '',
       status: 'pending',
+      priority: params.priority ?? 100, // 默认优先级 100
       blockedBy,
       blocks,
       owner: params.owner || '',
@@ -226,6 +231,7 @@ export class TaskManager {
     if (params.subject) task.subject = params.subject;
     if (params.description !== undefined) task.description = params.description;
     if (params.owner !== undefined) task.owner = params.owner;
+    if (params.priority !== undefined) task.priority = params.priority;
 
     // 添加 blockedBy
     if (params.add_blocked_by) {
@@ -321,7 +327,16 @@ export class TaskManager {
    */
   listRunnable(): Task[] {
     const tasks = this.getAllTasks();
-    return tasks.filter(task => task.status === 'pending' && task.blockedBy.length === 0);
+    const runnable = tasks.filter(task => task.status === 'pending' && task.blockedBy.length === 0);
+    // 按优先级排序（数值越小优先级越高），undefined 优先级最低，同优先级按创建时间排序
+    return runnable.sort((a, b) => {
+      const aPriority = a.priority ?? Infinity;
+      const bPriority = b.priority ?? Infinity;
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      return a.createdAt - b.createdAt;
+    });
   }
 
   /**

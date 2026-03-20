@@ -15,6 +15,7 @@ interface Task {
   subject: string;
   description: string;
   status: TaskStatus;
+  priority: number;
   owner: string;
   blockedBy: number[];
   blocks: number[];
@@ -118,7 +119,7 @@ export function createTasksRouter(): Router {
 
   // POST /tasks - Create new task (using TaskManager would be better, but for API compatibility)
   router.post('/tasks', async (req: Request, res: Response) => {
-    const { subject, description, owner, blockedBy } = req.body;
+    const { subject, description, owner, blockedBy, priority } = req.body;
 
     if (!subject) {
       res.status(400).json({ error: 'Subject is required' });
@@ -132,15 +133,18 @@ export function createTasksRouter(): Router {
     const now = Date.now();
 
     // Parse blockedBy IDs
-    const blockedByIds = (blockedBy || []).map((id: string) =>
-      parseInt(String(id).replace('task_', ''), 10)
-    ).filter(id => !isNaN(id));
+    const parseId = (id: string): number => {
+      const parsed = parseInt(String(id).replace('task_', ''), 10);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+    const blockedByIds: number[] = (blockedBy || []).map(parseId).filter((id: number) => id > 0);
 
     const newTask: Task = {
       id: newId,
       subject,
       description: description || '',
       status: 'pending',
+      priority: priority ?? 100,
       owner: owner || '',
       blockedBy: blockedByIds,
       blocks: [],

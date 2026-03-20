@@ -1,5 +1,3 @@
-# Reasoning Format
-
 Reasoning is off by default (hidden unless enabled).
 
 - Toggle: /reasoning

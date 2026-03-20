@@ -242,6 +242,37 @@ describe("Task System Integration", () => {
       expect(deleted).toBe(false);
     });
   });
+
+  describe("Task Priority (T-002)", () => {
+    it("should create task with default priority", () => {
+      const task = taskManager.create({ subject: "Test Task" });
+      expect(task.priority).toBe(100);
+    });
+
+    it("should create task with custom priority", () => {
+      const task = taskManager.create({ subject: "High Priority", priority: 1 });
+      expect(task.priority).toBe(1);
+    });
+
+    it("should list runnable tasks by priority", () => {
+      taskManager.create({ subject: "Low Priority", priority: 100 });
+      taskManager.create({ subject: "Medium Priority", priority: 50 });
+      taskManager.create({ subject: "High Priority", priority: 1 });
+
+      const runnable = taskManager.listRunnable();
+      expect(runnable[0].subject).toBe("High Priority");
+      expect(runnable[1].subject).toBe("Medium Priority");
+      expect(runnable[2].subject).toBe("Low Priority");
+    });
+
+    it("should update task priority", () => {
+      const task = taskManager.create({ subject: "Test", priority: 100 });
+      taskManager.update({ task_id: task.id, priority: 1 });
+
+      const updated = taskManager.get(task.id);
+      expect(updated?.priority).toBe(1);
+    });
+  });
 });
 
 describe("Task Tools", () => {

@@ -2,10 +2,10 @@
   "id": 2,
   "subject": "Fix login bug",
   "description": "Fix the login redirect issue",
-  "status": "pending",
+  "status": "in_progress",
   "blockedBy": [],
   "blocks": [],
-  "owner": "",
+  "owner": "test-agent",
   "createdAt": 1773797866739,
-  "updatedAt": 1773797866739
+  "updatedAt": 1774021247174
 }

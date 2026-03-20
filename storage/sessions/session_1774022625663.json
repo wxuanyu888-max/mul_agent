@@ -1,0 +1,44 @@
+{
+  "sessionId": "session_1774022625663",
+  "updatedAt": 1774022639141,
+  "messages": [
+    {
+      "role": "user",
+      "content": "ls and read tsconfig.json",
+      "timestamp": 1774022639140
+    },
+    {
+      "role": "assistant",
+      "content": "{\"tool_calls\":[{\"id\":\"call_function_89xffzfrzakx_1\",\"name\":\"ls\",\"input\":{\"path\":\".\"}},{\"id\":\"call_function_89xffzfrzakx_2\",\"name\":\"find\",\"input\":{\"name\":\"tsconfig.json\",\"path\":\".\"}}]}",
+      "timestamp": 1774022639140
+    },
+    {
+      "role": "user",
+      "content": "{\n  \"path\": \".\",\n  \"results\": {\n    \".\": [\n      {\n        \"name\": \"agentrx\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"docs\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"extensions\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"git-hooks\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"node_modules\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"openclaw\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"scripts\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"skills\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"src\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"storage\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"tests\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"ui\",\n        \"type\": \"directory\"\n      },\n      {\n        \"name\": \"AGENTS.md\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"CHANGELOG.md\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"CLAUDE.md\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"CLEANUP_REPORT.md\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"CONTRIBUTING.md\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"LICENSE\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"mint.json\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"oxfmt.config.json\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"oxlint.json\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"package-lock.json\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"package.json\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"pnpm-lock.yaml\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"pnpm-workspace.yaml\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"pyproject.toml\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"README.md\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"SECURITY.md\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"test_output.txt\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"test.txt\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"tsconfig.json\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"tsconfig.tsbuildinfo\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"VISION.md\",\n        \"type\": \"file\"\n      },\n      {\n        \"name\": \"vitest.config.ts\",\n        \"type\": \"file\"\n      }\n    ]\n  },\n  \"totalDirs\": 1\n}",
+      "tool_call_id": "call_function_89xffzfrzakx_1",
+      "timestamp": 1774022639140
+    },
+    {
+      "role": "user",
+      "content": "{\n  \"results\": [\n    \"openclaw/openclaw/tsconfig.json\",\n    \"openclaw/openclaw/vendor/a2ui/renderers/angular/tsconfig.json\",\n    \"openclaw/openclaw/vendor/a2ui/renderers/lit/tsconfig.json\",\n    \"openclaw/openclaw/vendor/a2ui/specification/0.8/eval/tsconfig.json\",\n    \"openclaw/openclaw/vendor/a2ui/specification/0.9/eval/tsconfig.json\",\n    \"tsconfig.json\",\n    \"ui/tsconfig.json\"\n  ],\n  \"count\": 7,\n  \"name\": \"tsconfig.json\",\n  \"path\": \".\",\n  \"type\": \"file\"\n}",
+      "tool_call_id": "call_function_89xffzfrzakx_2",
+      "timestamp": 1774022639140
+    },
+    {
+      "role": "assistant",
+      "content": "{\"tool_calls\":[{\"id\":\"call_function_thpyj3su121k_1\",\"name\":\"read\",\"input\":{\"path\":\"tsconfig.json\"}}]}",
+      "timestamp": 1774022639140
+    },
+    {
+      "role": "user",
+      "content": "{\n  \"content\": \"{\\n  \\\"$schema\\\": \\\"https://json.schemastore.org/tsconfig\\\",\\n  \\\"compilerOptions\\\": {\\n    \\\"allowImportingTsExtensions\\\": true,\\n    \\\"allowSyntheticDefaultImports\\\": true,\\n    \\\"declaration\\\": true,\\n    \\\"declarationMap\\\": true,\\n    \\\"esModuleInterop\\\": true,\\n    \\\"experimentalDecorators\\\": true,\\n    \\\"forceConsistentCasingInFileNames\\\": true,\\n    \\\"lib\\\": [\\\"DOM\\\", \\\"DOM.Iterable\\\", \\\"ES2023\\\"],\\n    \\\"module\\\": \\\"ESNext\\\",\\n    \\\"moduleResolution\\\": \\\"bundler\\\",\\n    \\\"noEmit\\\": true,\\n    \\\"noEmitOnError\\\": false,\\n    \\\"resolveJsonModule\\\": true,\\n    \\\"skipLibCheck\\\": true,\\n    \\\"strict\\\": true,\\n    \\\"strictPropertyInitialization\\\": false,\\n    \\\"target\\\": \\\"ES2023\\\",\\n    \\\"useDefineForClassFields\\\": false,\\n    \\\"jsx\\\": \\\"react-jsx\\\",\\n    \\\"paths\\\": {\\n      \\\"@/*\\\": [\\\"./ui/src/*\\\"],\\n      \\\"@mul-agent/*\\\": [\\\"./mul_agent/*\\\"],\\n      \\\"@skills/*\\\": [\\\"./skills/*\\\"]\\n    },\\n    \\\"baseUrl\\\": \\\".\\\"\\n  },\\n  \\\"include\\\": [\\n    \\\"ui/src/**/*\\\",\\n    \\\"ui/tests/**/*\\\",\\n    \\\"src/**/*\\\",\\n    \\\"mul_agent/**/*.pyi\\\",\\n    \\\"skills/**/*.ts\\\"\\n  ],\\n  \\\"exclude\\\": [\\n    \\\"node_modules\\\",\\n    \\\"dist\\\",\\n    \\\"build\\\",\\n    \\\".venv\\\",\\n    \\\"storage\\\",\\n    \\\"wang\\\",\\n    \\\"agents\\\",\\n    \\\"openclaw\\\",\\n    \\\"**/*.test.ts\\\",\\n    \\\"**/*.test.tsx\\\"\\n  ]\\n}\\n\",\n  \"lines\": 50,\n  \"totalLines\": 50,\n  \"from\": 1,\n  \"to\": 50,\n  \"path\": \"tsconfig.json\"\n}",
+      "tool_call_id": "call_function_thpyj3su121k_1",
+      "timestamp": 1774022639140
+    },
+    {
+      "role": "assistant",
+      "content": "Here's the **tsconfig.json** content:\n\n```json\n{\n  \"$schema\": \"https://json.schemastore.org/tsconfig\",\n  \"compilerOptions\": {\n    \"allowImportingTsExtensions\": true,\n    \"allowSyntheticDefaultImports\": true,\n    \"declaration\": true,\n    \"declarationMap\": true,\n    \"esModuleInterop\": true,\n    \"experimentalDecorators\": true,\n    \"forceConsistentCasingInFileNames\": true,\n    \"lib\": [\"DOM\", \"DOM.Iterable\", \"ES2023\"],\n    \"module\": \"ESNext\",\n    \"moduleResolution\": \"bundler\",\n    \"noEmit\": true,\n    \"noEmitOnError\": false,\n    \"resolveJsonModule\": true,\n    \"skipLibCheck\": true,\n    \"strict\": true,\n    \"strictPropertyInitialization\": false,\n    \"target\": \"ES2023\",\n    \"useDefineForClassFields\": false,\n    \"jsx\": \"react-jsx\",\n    \"paths\": {\n      \"@/*\": [\"./ui/src/*\"],\n      \"@mul-agent/*\": [\"./mul_agent/*\"],\n      \"@skills/*\": [\"./skills/*\"]\n    },\n    \"baseUrl\": \".\"\n  },\n  \"include\": [\n    \"ui/src/**/*\",\n    \"ui/tests/**/*\",\n    \"src/**/*\",\n    \"mul_agent/**/*.pyi\",\n    \"skills/**/*.ts\"\n  ],\n  \"exclude\": [\n    \"node_modules\",\n    \"dist\",\n    \"build\",\n    \".venv\",\n    \"storage\",\n    \"wang\",\n    \"agents\",\n    \"openclaw\",\n    \"**/*.test.ts\",\n    \"**/*.test.tsx\"\n  ]\n}\n```\n\n**Key highlights:**\n- **Target**: ES2023\n- **Module**: ESNext with bundler resolution\n- **Strict mode**: enabled\n- **Path aliases**: `@/*` → `ui/src/*`, `@mul-agent/*` → `mul_agent/*`, `@skills/*` → `skills/*`\n- **Includes**: TypeScript files from `ui/`, `src/`, Python stub files from `mul_agent/`, and TS files from `skills/`\n- **Excludes**: Test files, vendor code (`openclaw`), and build outputs",
+      "timestamp": 1774022639140
+    }
+  ]
+}

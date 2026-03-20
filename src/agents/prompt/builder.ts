@@ -15,6 +15,7 @@ import type {
   SkillInfo,
   ContextInfo,
 } from './types.js';
+import type { LoadedItem } from '../types.js';
 
 // 提示词模板目录 (使用 process.cwd() 获取项目根目录)
 const PROMPTS_DIR = join(process.cwd(), 'storage/prompts');
@@ -155,7 +156,7 @@ For more information, consult the documentation.`,
  * 构建完整提示词
  */
 export function buildSystemPrompt(context: BuildContext): string {
-  const { config, tools, skills, runtime, context: ctx } = context;
+  const { config, tools, skills, runtime, context: ctx, loadedItems, isReviewRound } = context;
   const mode = config.promptMode ?? 'full';
 
   // 加载模板
@@ -167,11 +168,19 @@ export function buildSystemPrompt(context: BuildContext): string {
   // 构建动态变量
   const dynamicVars = buildDynamicVariables(context);
 
+  // 格式化已加载的 skills
+  const loadedSkillsContent = formatLoadedSkills(loadedItems || []);
+
+  // 格式化审查提示
+  const reviewPrompt = formatReviewPrompt(isReviewRound || false, loadedItems || []);
+
   // 替换占位符
   return parseTemplate(template, {
     ...modules,
     ...dynamicVars,
     tool_list: formatToolList(tools),
+    loaded_skills: loadedSkillsContent,
+    review_prompt: reviewPrompt,
   });
 }
 
@@ -194,10 +203,23 @@ function buildDynamicVariables(context: BuildContext): Record<string, string> {
   });
 
   // 格式化工作目录相关变量
+  const sessionWorkspaceDir = config.sessionId
+    ? join('storage/workspace', config.sessionId).replace(/\\/g, '/')
+    : '';
+
+  // 格式化生成的文件列表
+  const generatedFilesList = config.generatedFiles && config.generatedFiles.length > 0
+    ? config.generatedFiles.map(f => `- ${f.name}: ${f.path}`).join('\n')
+    : '(none yet)';
+
   const workspaceVars = {
     workspace_dir: config.workspaceDir,
-    workspace_guidance: 'You can read, write, and execute files in this directory.',
+    workspace_session_dir: sessionWorkspaceDir || '(none - using global workspace)',
+    workspace_guidance: config.sessionId
+      ? `You can read, write, and execute files in the session workspace: ${sessionWorkspaceDir}`
+      : 'You can read, write, and execute files in this directory.',
     workspace_notes: '',
+    generated_files: generatedFilesList,
   };
 
   // 格式化沙箱相关变量
@@ -327,6 +349,8 @@ function loadAllModules(context: BuildContext): Record<string, string> {
     context_files: '',
     docs_url: '',
     voice: '',
+    loaded_skills: '',
+    review_prompt: '',
 
     // 额外系统提示
     extra: config.extraSystemPrompt || '',
@@ -447,4 +471,59 @@ function parseTemplate(
  */
 export function buildHeartbeatPrompt(): string {
   return loadModule('heartbeats');
+}
+
+/**
+ * 格式化已加载的 skills/MCP 内容
+ */
+function formatLoadedSkills(items: LoadedItem[]): string {
+  if (items.length === 0) {
+    return '';
+  }
+
+  const skillItems = items.filter(i => i.type === 'skill');
+  if (skillItems.length === 0) {
+    return '';
+  }
+
+  const skillContent = skillItems
+    .map(item => `### ${item.name}\n${item.content}`)
+    .join('\n---\n');
+
+  return `## 已加载的 Skills
+
+${skillContent}
+
+---
+你可以在当前对话中直接使用以上已加载的 skill。`;
+}
+
+/**
+ * 格式化审查提示（每 10 轮一次）
+ */
+function formatReviewPrompt(isReviewRound: boolean, items: LoadedItem[]): string {
+  if (!isReviewRound || items.length === 0) {
+    return '';
+  }
+
+  const itemList = items
+    .map(item => `- ${item.name} (${item.type})`)
+    .join('\n');
+
+  return `
+
+---
+
+## 审查提示 (每 10 轮一次)
+
+请审视当前已加载的 skill/MCP：
+
+${itemList}
+
+问题：
+1. 以上加载的资源是否还在使用？
+2. 是否有需要加载的新 skill/MCP？
+3. 是否需要清除不再使用的加载？
+
+**注意**：如果需要重新加载，请调用 \`load\` 工具。新的 load 会覆盖之前的。`;
 }

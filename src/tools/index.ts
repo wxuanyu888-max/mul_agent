@@ -16,9 +16,16 @@ export {
 
 // Compact tool (context compression)
 export { createCompactTool } from "./compact.js";
+export { createWorkspaceRefreshTool } from "./workspace.js";
+
+// Load tool (skill/MCP loading)
+export { createLoadTool } from "./load.js";
 
 // Web tools
 export { createWebSearchTool, createWebFetchTool } from "./web/index.js";
+
+// Browser MCP tools
+export { createBrowserMcpTool } from "./browser/index.js";
 
 // Memory tools
 export { createMemorySearchTool, createMemoryGetTool } from "./memory/index.js";
@@ -43,7 +50,7 @@ export {
   createAgentsListTool,
 } from "./system/index.js";
 
-// Media tools (browser, canvas, nodes, tts, image, pdf)
+// Media tools (browser, canvas, nodes, tts, image, pdf, video)
 export {
   createBrowserTool,
   createCanvasTool,
@@ -51,6 +58,7 @@ export {
   createTtsTool,
   createImageTool,
   createPdfTool,
+  createVideoTool,
 } from "./media/index.js";
 
 // File tools (read, write, edit, grep, find, ls)
@@ -87,12 +95,16 @@ export {
   createTeammateInboxTool,
   createTeammateBroadcastTool,
   createTeammateListTool,
+  createTeammateDelegateTool,
+  createTeammateDelegationStatusTool,
+  createTeammateAskTool,
 } from "./teammate/index.js";
 
 // 工具注册表 - 默认加载的工具
 import { createTaskTool } from "./task.js";
 import { createTaskCreateTool, createTaskUpdateTool, createTaskListTool, createTaskGetTool } from "./tasks/index.js";
 import { createCompactTool } from "./compact.js";
+import { createWorkspaceRefreshTool } from "./workspace.js";
 import { createWebSearchTool, createWebFetchTool } from "./web/index.js";
 import { createMemoryTool, createMemorySearchTool, createMemoryGetTool } from "./memory/index.js";
 import {
@@ -117,7 +129,11 @@ import {
   createTtsTool,
   createImageTool,
   createPdfTool,
+  createVideoTool,
 } from "./media/index.js";
+
+// Browser MCP tools
+import { createBrowserMcpTool } from "./browser/index.js";
 
 // File tools
 import {
@@ -150,10 +166,13 @@ import {
   createTeammateInboxTool,
   createTeammateBroadcastTool,
   createTeammateListTool,
+  createTeammateDelegateTool,
+  createTeammateDelegationStatusTool,
+  createTeammateAskTool,
 } from "./teammate/index.js";
 
 export interface ToolOptions {
-  sessionKey?: string;
+  sessionId?: string;
   config?: any;
   agentId?: string;
 }
@@ -163,6 +182,7 @@ export interface ToolOptions {
  * 可以根据选项选择性加载工具
  */
 export function createDefaultTools(options?: ToolOptions) {
+  const { sessionId } = options || {};
   const tools = [
     // ===== 核心工具 =====
 
@@ -171,10 +191,17 @@ export function createDefaultTools(options?: ToolOptions) {
 
     // Compact (context compression)
     createCompactTool(),
+    createWorkspaceRefreshTool(),
 
     // Web
     createWebSearchTool(),
-    createWebFetchTool(),
+    createWebFetchTool(sessionId),
+
+    // Video
+    createVideoTool(sessionId),
+
+    // Browser MCP
+    createBrowserMcpTool(),
 
     // Memory (统一入口：search, get, write)
     createMemoryTool(),
@@ -318,4 +345,7 @@ export const TOOL_DESCRIPTIONS: Record<string, string> = {
   teammate_inbox: "Read and clear a teammate's inbox",
   teammate_broadcast: "Broadcast a message to all teammates",
   teammate_list: "List all teammates and their status",
+  teammate_delegate: "Delegate a task to a teammate with tracking",
+  teammate_delegation_status: "Check the status of a delegated task",
+  teammate_ask: "Ask a teammate a question and wait for response synchronously",
 };

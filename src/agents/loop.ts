@@ -16,8 +16,9 @@
 
 import { getLLMClient, type LLMMessage, type LLMRequest, type LLMResponse } from './llm.js';
 import { buildSystemPrompt, type BuildContext, type ToolInfo, type SkillInfo } from './prompt/index.js';
-import { createDefaultTools, syncWorkspaceToMemory } from '../tools/index.js';
-import type { Message, ToolResult as AgentToolResult } from './types.js';
+import { createDefaultTools, createLoadTool, syncWorkspaceToMemory } from '../tools/index.js';
+import type { Message, ToolResult as AgentToolResult, LoadedItem, LLMMessage as AILoopLLMMessage } from './types.js';
+import { toLLMMessages } from './types.js';
 import { errorResult, type JsonToolResult, type ToolResult } from '../tools/types.js';
 import {
   microCompact,
@@ -53,6 +54,10 @@ export interface AgentLoopConfig {
   timeoutMs?: number;
   /** 工作目录 */
   workspaceDir?: string;
+  /** Session ID（用于工作区划分） */
+  sessionId?: string;
+  /** 文件列表刷新间隔（轮数），默认10轮 */
+  fileRefreshInterval?: number;
   /** 额外系统提示 */
   extraSystemPrompt?: string;
   /** 提示模式 */
@@ -126,12 +131,22 @@ export class AgentLoop {
   private tools: Map<string, RegisteredTool> = new Map();
   private config: Required<AgentLoopConfig>;
   private compactionContext: CompactionContext;
+  /** 追踪当前会话生成的文件 */
+  private generatedFiles: Array<{ path: string; name: string; timestamp: number }> = [];
+  /** 已加载的 skill/MCP */
+  private loadedItems: Map<string, LoadedItem> = new Map();
+  /** 对话轮次计数 */
+  private conversationRound: number = 0;
+  /** 审查触发阈值 */
+  private readonly REVIEW_THRESHOLD = 10;
 
   constructor(config: AgentLoopConfig = {}) {
     this.config = {
       maxIterations: config.maxIterations ?? 20,
       timeoutMs: config.timeoutMs ?? 300000,
       workspaceDir: config.workspaceDir ?? process.cwd(),
+      sessionId: config.sessionId ?? '',
+      fileRefreshInterval: config.fileRefreshInterval ?? 10,
       extraSystemPrompt: config.extraSystemPrompt ?? '',
       promptMode: config.promptMode ?? 'full',
       onToolConfirm: config.onToolConfirm ?? (async () => true),
@@ -164,15 +179,77 @@ export class AgentLoop {
    * 注册默认工具集
    */
   registerDefaultTools(): void {
-    const defaultTools = createDefaultTools();
+    const defaultTools = createDefaultTools({ sessionId: this.config.sessionId });
     this.registerTools(defaultTools as unknown as RegisteredTool[]);
+
+    // 注册 load 工具
+    const loadTool = createLoadTool({
+      getLoadedItems: () => this.loadedItems,
+      setLoadedItem: (name: string, item: LoadedItem) => {
+        this.loadedItems.set(name, item);
+      }
+    });
+    this.registerTool(loadTool as unknown as RegisteredTool);
+  }
+
+  /**
+   * 获取已加载的 skill/MCP
+   */
+  getLoadedItems(): LoadedItem[] {
+    return Array.from(this.loadedItems.values());
+  }
+
+  /**
+   * 获取当前对话轮次
+   */
+  getConversationRound(): number {
+    return this.conversationRound;
+  }
+
+  /**
+   * 追踪工具生成的文件
+   */
+  private trackGeneratedFiles(toolName: string, output: string): void {
+    // 只追踪已知会产生文件的工具
+    const fileTools = ['video', 'web_fetch', 'webfetch'];
+    if (!fileTools.includes(toolName)) return;
+
+    try {
+      // 尝试从输出中提取 JSON 数据
+      const jsonMatch = output.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return;
+
+      const data = JSON.parse(jsonMatch[0]);
+      const files = data.files || [];
+
+      for (const file of files) {
+        if (file.path) {
+          // 避免重复添加
+          const exists = this.generatedFiles.some(f => f.path === file.path);
+          if (!exists) {
+            this.generatedFiles.push({
+              path: file.path,
+              name: file.name || file.path.split('/').pop(),
+              timestamp: Date.now(),
+            });
+          }
+        }
+      }
+
+      // 保留最近 20 个文件
+      if (this.generatedFiles.length > 20) {
+        this.generatedFiles = this.generatedFiles.slice(-20);
+      }
+    } catch {
+      // 解析失败，忽略
+    }
   }
 
   /**
    * s08: 注入后台任务通知
    * 每次 LLM 调用前排空通知队列，将结果注入消息
    */
-  private injectBackgroundNotifications(messages: LLMRequest['messages']): LLMRequest['messages'] {
+  private injectBackgroundNotifications(messages: Message[]): Message[] {
     const bg = getBackgroundManager();
     const notifications = bg.drainNotifications();
 
@@ -222,15 +299,25 @@ export class AgentLoop {
     // 加载 skills
     const skills = await this.loadSkills();
 
+    // 检查是否是审查轮次
+    const isReviewRound = this.conversationRound > 0 && this.conversationRound % this.REVIEW_THRESHOLD === 0;
+
+    // 将 loadedItems 转换为数组
+    const loadedItemsArray = Array.from(this.loadedItems.values());
+
     // 构建上下文
     const context: BuildContext = {
       config: {
         workspaceDir: this.config.workspaceDir,
+        sessionId: this.config.sessionId,
+        generatedFiles: this.generatedFiles,
         extraSystemPrompt: this.config.extraSystemPrompt,
         promptMode: this.config.promptMode,
       },
       tools: toolInfos,
       skills: skills,
+      loadedItems: loadedItemsArray,
+      isReviewRound: isReviewRound,
     };
 
     // 使用提示词 builder 构建系统提示词
@@ -277,19 +364,18 @@ export class AgentLoop {
   }): Promise<AgentLoopResult> {
     const { message, history = [] } = params;
 
+    // 递增对话轮次
+    this.conversationRound++;
+
     // 重置压缩上下文
     this.compactionContext = createCompactionContext();
 
     // 构建系统提示词（使用 PromptBuilder）
-    const systemPrompt = await this.buildPrompt();
+    let systemPrompt = await this.buildPrompt();
+    let lastFileCount = this.generatedFiles.length;  // 追踪文件数量变化
 
     // 构建初始消息
-    let messages: Array<{
-      role: 'user' | 'assistant';
-      content: string;
-      tool_calls?: Array<{ id: string; name: string; input: Record<string, unknown> }>;
-      tool_call_id?: string;
-    }> = [];
+    let messages: Message[] = [];
 
     // 添加历史消息（只包含 user 和 assistant，排除 system）
     for (const msg of history) {
@@ -331,6 +417,18 @@ export class AgentLoop {
       while (iterations < this.config.maxIterations) {
         iterations++;
 
+        // === 文件列表刷新检查 ===
+        // 每 N 轮或文件数量变化时重新构建 systemPrompt
+        const needsRefresh =
+          iterations % this.config.fileRefreshInterval === 0 ||
+          this.generatedFiles.length !== lastFileCount;
+
+        if (needsRefresh) {
+          console.log(`[FileRefresh] Refreshing file list (iteration: ${iterations}, files: ${this.generatedFiles.length})`);
+          systemPrompt = await this.buildPrompt();
+          lastFileCount = this.generatedFiles.length;
+        }
+
         // === Layer 1: micro_compact ===
         // 每次 LLM 调用前，将旧的 tool result 替换为占位符
         if (compactionConfig) {
@@ -363,7 +461,7 @@ export class AgentLoop {
 
         const response = await llm.chat({
           model: (llm as any).model,
-          messages: messages,
+          messages: toLLMMessages(messages),
           system: systemPrompt,
           tools: tools && tools.length > 0 ? tools : undefined,
         });
@@ -395,6 +493,13 @@ export class AgentLoop {
           }
 
           // 执行工具调用
+          // 一次性添加所有的 tool_calls 到消息中
+          messages.push({
+            role: 'assistant',
+            content: JSON.stringify({ tool_calls: toolCalls }),
+          });
+
+          // 执行所有工具
           for (const toolCall of toolCalls) {
             toolCallsCount++;
 
@@ -424,12 +529,9 @@ export class AgentLoop {
             const confirmed = await this.config.onToolConfirm(toolCall);
             if (!confirmed) {
               messages.push({
-                role: 'assistant',
-                content: JSON.stringify({ tool_calls: [toolCall] }),
-              });
-              messages.push({
                 role: 'user',
                 content: 'Tool execution was rejected by user',
+                tool_call_id: toolCall.id,
               });
               continue;
             }
@@ -437,20 +539,16 @@ export class AgentLoop {
             // 执行工具
             const result = await this.executeTool(toolCall);
 
+            // 提取并追踪生成的文件路径
+            this.trackGeneratedFiles(toolCall.name, result.output);
+
             this.config.onToolExecute(toolCall, result);
 
             // 将工具结果加入消息（Anthropic 兼容格式）
-            // 1. 先添加 assistant 的 tool_call
-            messages.push({
-              role: 'assistant',
-              content: JSON.stringify({ tool_calls: [toolCall] }),
-            });
-
-            // 2. 再添加 user 的 tool_result
             messages.push({
               role: 'user',
-              content: result.output,  // 直接放结果内容
-              tool_call_id: toolCall.id,  // 关键：需要这个字段关联到 tool_call
+              content: result.output,
+              tool_call_id: toolCall.id,
             });
           }
 

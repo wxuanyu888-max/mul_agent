@@ -103,20 +103,21 @@ function TaskItem({ task, isSelected, onSelect, onStatusChange }: {
 }
 
 function TaskForm({ onSubmit, onCancel, initialData, availableTasks }: {
-  onSubmit: (data: { subject: string; description: string; owner?: string; blockedBy?: string[] }) => void;
+  onSubmit: (data: { subject: string; description: string; priority?: number; owner?: string; blockedBy?: string[] }) => void;
   onCancel: () => void;
   initialData?: TaskType;
   availableTasks: TaskType[];
 }) {
   const [subject, setSubject] = useState(initialData?.subject || '');
   const [description, setDescription] = useState(initialData?.description || '');
+  const [priority, setPriority] = useState(initialData?.priority ?? 100);
   const [owner, setOwner] = useState(initialData?.owner || '');
   const [blockedBy, setBlockedBy] = useState<string[]>(initialData?.blockedBy || []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim()) return;
-    onSubmit({ subject, description, owner: owner || undefined, blockedBy });
+    onSubmit({ subject, description, priority, owner: owner || undefined, blockedBy });
   };
 
   const toggleBlockedBy = (taskId: string) => {
@@ -167,6 +168,20 @@ function TaskForm({ onSubmit, onCancel, initialData, availableTasks }: {
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           placeholder="Assignee (optional)"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Priority
+        </label>
+        <input
+          type="number"
+          value={priority}
+          onChange={(e) => setPriority(Number(e.target.value) || 100)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          placeholder="Lower number = higher priority"
+        />
+        <p className="text-xs text-gray-400 mt-1">Lower number = higher priority (1 = highest)</p>
       </div>
 
       {availableTasks.length > 0 && (
@@ -245,13 +260,13 @@ export default function TaskPanel() {
     !(selectedTask?.blockedBy.includes(t.id))
   );
 
-  const handleCreateTask = (data: { subject: string; description: string; owner?: string; blockedBy?: string[] }) => {
-    const newTask = addTask(data);
+  const handleCreateTask = async (data: { subject: string; description: string; priority?: number; owner?: string; blockedBy?: string[] }) => {
+    const newTask = await addTask(data);
     setSelectedTaskId(newTask.id);
     setShowForm(false);
   };
 
-  const handleUpdateTask = (data: { subject: string; description: string; owner?: string; blockedBy?: string[] }) => {
+  const handleUpdateTask = (data: { subject: string; description: string; priority?: number; owner?: string; blockedBy?: string[] }) => {
     if (!editingTask) return;
     updateTask(editingTask.id, data);
     setEditingTask(null);

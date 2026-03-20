@@ -22,6 +22,8 @@ If unsure, ask the user for help and paste the output.
 
 {{skills}}
 
+{{loaded_skills}}
+
 {{memory}}
 
 {{model_aliases}}
@@ -56,9 +58,9 @@ If you need the current date, time, or day of week, run session_status.
 ## Documentation
 {{docs_url}}
 
-## Reactions
 {{reactions}}
 
-## Reasoning Format
 {{reasoning_format}}
+
+{{review_prompt}}
 ```
