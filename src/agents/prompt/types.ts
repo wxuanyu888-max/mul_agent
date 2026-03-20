@@ -2,7 +2,7 @@
  * 提示词构建器类型定义
  */
 
-import type { Tool, LoadedItem } from '../types.js';
+import type { LoadedItem } from '../types.js';
 
 /**
  * 提示词构建配置

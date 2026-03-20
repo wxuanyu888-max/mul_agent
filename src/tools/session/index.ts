@@ -1,6 +1,6 @@
 // Sessions 工具 - 统一入口
 import { jsonResult, errorResult } from "../types.js";
-import { querySessions, createSession, getSession, addMessage, getActiveSessions } from "../../session/index.js";
+import { querySessions, createSession, getSession, addMessage } from "../../session/index.js";
 
 export function createSessionsTool() {
   return {

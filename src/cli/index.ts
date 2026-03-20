@@ -49,7 +49,7 @@ export interface CliMainOptions {
  * 创建 CLI 应用
  */
 export function createCli(options: CliMainOptions) {
-  const { name, version, description, commands = [] } = options;
+  const { name, version, description: _description, commands = [] } = options;
 
   // 注册命令
   for (const cmd of commands) {

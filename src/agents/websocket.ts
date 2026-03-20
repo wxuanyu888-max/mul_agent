@@ -21,7 +21,7 @@ export type WSMessageType =
  */
 export interface WSMessage {
   type: WSMessageType;
-  payload: any;
+  payload: unknown;
   timestamp?: number;
   id?: string;
 }
@@ -340,7 +340,7 @@ export type AgentEventType = 'start' | 'stop' | 'error' | 'message' | 'tool_call
 export interface AgentEvent {
   agentId: string;
   eventType: AgentEventType;
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 
@@ -353,7 +353,7 @@ export function createAgentEventEmitter() {
   /**
    * 发射 Agent 事件
    */
-  function emitAgentEvent(agentId: string, eventType: AgentEventType, data: any) {
+  function emitAgentEvent(agentId: string, eventType: AgentEventType, data: unknown) {
     emitter.emit('agent_event', {
       agentId,
       eventType,

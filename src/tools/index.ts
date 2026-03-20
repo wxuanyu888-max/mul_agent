@@ -173,7 +173,7 @@ import {
 
 export interface ToolOptions {
   sessionId?: string;
-  config?: any;
+  config?: Record<string, unknown>;
   agentId?: string;
 }
 
@@ -254,12 +254,19 @@ export function createDefaultTools(options?: ToolOptions) {
     // createClaimTaskTool(),
     // createTeamListTool(),
 
-    // Teammate - 非核心
-    // createTeammateSpawnTool(),
-    // createTeammateSendTool(),
-    // createTeammateInboxTool(),
-    // createTeammateBroadcastTool(),
-    // createTeammateListTool(),
+    // Autonomous tools (s11)
+    createClaimTaskTool(),
+    createTeamListTool(),
+
+    // Teammate tools (s09)
+    createTeammateSpawnTool(),
+    createTeammateSendTool(),
+    createTeammateInboxTool(),
+    createTeammateBroadcastTool(),
+    createTeammateListTool(),
+    createTeammateDelegateTool(),
+    createTeammateDelegationStatusTool(),
+    createTeammateAskTool(),
 
     // Task 详细功能 - 已合并到 task 统一入口
     // createTaskCreateTool(),
@@ -274,7 +281,7 @@ export function createDefaultTools(options?: ToolOptions) {
 /**
  * 创建最小工具集（仅核心功能）
  */
-export function createMinimalTools(options?: ToolOptions) {
+export function createMinimalTools(_options?: ToolOptions) {
   return [
     // 必须：Memory
     createMemorySearchTool(),

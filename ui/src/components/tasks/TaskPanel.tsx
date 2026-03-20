@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTaskStore } from '../../stores';
-import { CheckSquare, CheckCircle2, Circle, Clock, Trash2, Plus, X, ArrowDown, ArrowUp, ListTodo } from 'lucide-react';
+import { CheckSquare, CheckCircle2, Circle, Clock, Trash2, Plus, X, ArrowDown, ArrowUp, ListTodo, GitBranch } from 'lucide-react';
+import { TaskDagView } from './TaskDagView';
 import type { TaskStatus, Task as TaskType } from '../../types';
 
 const statusConfig: Record<TaskStatus, { icon: React.ReactNode; color: string; label: string }> = {
@@ -245,6 +246,7 @@ export default function TaskPanel() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskType | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'dag'>('list');
 
   // Fetch tasks from API on mount
   useEffect(() => {
@@ -296,16 +298,40 @@ export default function TaskPanel() {
               <ListTodo className="w-5 h-5 text-purple-600" />
               <span className="font-semibold text-gray-900">Tasks</span>
             </div>
-            <button
-              onClick={() => {
-                setEditingTask(null);
-                setShowForm(true);
-              }}
-              className="p-1.5 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 transition-colors"
-              title="New Task"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-purple-100 text-purple-600'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                }`}
+                title="List View"
+              >
+                <ListTodo className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('dag')}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  viewMode === 'dag'
+                    ? 'bg-purple-100 text-purple-600'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                }`}
+                title="Graph View"
+              >
+                <GitBranch className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setEditingTask(null);
+                  setShowForm(true);
+                }}
+                className="p-1.5 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 transition-colors ml-1"
+                title="New Task"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Filter tabs */}
@@ -335,24 +361,36 @@ export default function TaskPanel() {
           </div>
         </div>
 
-        {/* Task List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {filteredTasks.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
+        {/* Task List or DAG View */}
+        <div className="flex-1 overflow-hidden">
+          {viewMode === 'dag' ? (
+            <div className="h-full">
+              <TaskDagView
+                tasks={tasks}
+                onSelectTask={(taskId) => {
+                  setSelectedTaskId(taskId);
+                  setViewMode('list');
+                }}
+              />
+            </div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="p-3 text-center py-8 text-gray-400">
               <ListTodo className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No tasks yet</p>
               <p className="text-xs mt-1">Click + to create one</p>
             </div>
           ) : (
-            filteredTasks.map(task => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                isSelected={task.id === selectedTaskId}
-                onSelect={() => setSelectedTaskId(task.id)}
-                onStatusChange={(status) => setTaskStatus(task.id, status)}
-              />
-            ))
+            <div className="h-full overflow-y-auto p-3 space-y-2">
+              {filteredTasks.map(task => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  isSelected={task.id === selectedTaskId}
+                  onSelect={() => setSelectedTaskId(task.id)}
+                  onStatusChange={(status) => setTaskStatus(task.id, status)}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

@@ -206,7 +206,7 @@ export class LLMClient {
       if (msg.role === 'user' || msg.role === 'assistant') {
         messages.push({
           role: msg.role,
-          content: msg.content,
+          content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
         });
       }
     }

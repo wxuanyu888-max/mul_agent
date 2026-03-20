@@ -19,14 +19,14 @@ export interface CliOption {
   short?: string;
   description?: string;
   type: "string" | "number" | "boolean";
-  default?: any;
+  default?: string | number | boolean;
   required?: boolean;
 }
 
 export type CliAction = (args: CliArgs, options: CliArgs, context: CliContext) => Promise<void> | void;
 
 export interface CliArgs {
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface CliContext {

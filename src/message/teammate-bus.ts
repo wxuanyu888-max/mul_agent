@@ -84,8 +84,8 @@ export function broadcast(sender: string, content: string, msgType?: string): st
 
   if (fs.existsSync(configPath)) {
     try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      teammates = config.teammates?.map((t: any) => t.name) || [];
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as { teammates?: Array<{ name: string }> };
+      teammates = config.teammates?.map((t) => t.name) || [];
     } catch (e) {
       console.error('[TeammateBus] Failed to read config:', e);
     }

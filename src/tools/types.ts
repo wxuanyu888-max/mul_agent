@@ -18,7 +18,7 @@ export interface JsonToolResult extends ToolResult {
 /**
  * 创建 JSON 结果
  */
-export function jsonResult(data: any): JsonToolResult {
+export function jsonResult(data: unknown): JsonToolResult {
   return {
     content: JSON.stringify(data, null, 2),
   };

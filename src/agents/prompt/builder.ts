@@ -9,7 +9,6 @@ import { join } from 'node:path';
 import process from 'node:process';
 
 import type {
-  PromptBuilderConfig,
   BuildContext,
   ToolInfo,
   SkillInfo,
@@ -19,15 +18,6 @@ import type { LoadedItem } from '../types.js';
 
 // 提示词模板目录 (使用 process.cwd() 获取项目根目录)
 const PROMPTS_DIR = join(process.cwd(), 'storage/prompts');
-
-/**
- * 提示词模板
- */
-interface PromptTemplate {
-  full: string;
-  minimal: string;
-  none: string;
-}
 
 /**
  * 提示词模块

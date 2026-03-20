@@ -5,7 +5,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  type LogEntry,
   type LogLevel,
   type LogFilter,
   type LogQueryOptions,
@@ -48,8 +47,8 @@ export interface LlmCallLog {
   finishReason?: string;
 
   // 原始数据（可选）
-  rawRequest?: any;
-  rawResponse?: any;
+  rawRequest?: unknown;
+  rawResponse?: unknown;
 }
 
 /**

@@ -154,7 +154,6 @@ function extractTextFromDOC(buffer: Buffer): string {
 
   for (let i = 0; i < buffer.length - 1; i++) {
     const char = buffer[i];
-    const nextChar = buffer[i + 1];
 
     // Detect text sections (very basic heuristic)
     if (char >= 0x20 && char <= 0x7E) {

@@ -1,6 +1,7 @@
 // Compact 工具 - 手动触发上下文压缩
 import { jsonResult, errorResult } from "./types.js";
 import { manualCompact, createCompactionContext, estimateMessageTokens, type CompactionConfig } from "../agents/compaction.js";
+import type { Message } from "../agents/types.js";
 
 export interface CompactToolParams {
   /** 消息列表（JSON 字符串） */
@@ -38,16 +39,19 @@ export function createCompactTool() {
     ) => {
       try {
         // 解析消息
-        let messages: any[];
+        let parsedMessages: unknown[];
         if (typeof params?.messages === 'string') {
           try {
-            messages = JSON.parse(params.messages);
+            parsedMessages = JSON.parse(params.messages);
           } catch {
             return errorResult('Invalid messages JSON string');
           }
         } else {
           return errorResult('messages parameter is required and must be a JSON string');
         }
+
+        // 转换为 Message 类型
+        const messages = parsedMessages as Message[];
 
         // 构建压缩配置
         const config: CompactionConfig = {

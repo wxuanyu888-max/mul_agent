@@ -115,14 +115,14 @@ export function createMessageReceivedHook(
  * Tool 调用前钩子
  */
 export function createBeforeToolHook(
-  handler: (toolName: string, params: any) => Promise<void> | void
+  handler: (toolName: string, params: Record<string, unknown>) => Promise<void> | void
 ): HookHandler {
   return {
     event: "tool.before_call",
     handler: async (event: HookEvent) => {
       await handler(
-        event.context.data?.toolName || "",
-        event.context.data?.params || {}
+        event.context.data?.toolName as string || "",
+        event.context.data?.params as Record<string, unknown> || {}
       );
     },
   };
@@ -132,7 +132,7 @@ export function createBeforeToolHook(
  * Tool 调用后钩子
  */
 export function createAfterToolHook(
-  handler: (toolName: string, result: any) => Promise<void> | void
+  handler: (toolName: string, result: unknown) => Promise<void> | void
 ): HookHandler {
   return {
     event: "tool.after_call",

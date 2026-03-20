@@ -3,7 +3,6 @@
 
 import { exec as execAsync } from 'node:child_process';
 import { promisify } from 'node:util';
-import { randomUUID } from 'node:crypto';
 
 const execPromise = promisify(execAsync);
 

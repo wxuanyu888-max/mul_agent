@@ -10,7 +10,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { getLLMClient } from './llm.js';
-import type { Message } from './types.js';
+import type { Message, ContentBlock } from './types.js';
 
 /**
  * 压缩配置
@@ -155,7 +155,8 @@ function extractToolName(messages: Message[], msgIndex: number, partIndex: numbe
     if (msg.role === 'assistant' && msg.content) {
       try {
         // 尝试解析 JSON 内容
-        const parsed = JSON.parse(msg.content);
+        const contentStr = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+        const parsed = JSON.parse(contentStr);
         if (parsed.tool_calls && Array.isArray(parsed.tool_calls)) {
           return parsed.tool_calls[0]?.name;
         }
@@ -180,7 +181,7 @@ export function estimateMessageTokens(messages: Message[]): number {
       content = m.content;
     } else if (Array.isArray(m.content)) {
       content = m.content
-        .map((part: any) => (typeof part === 'string' ? part : part.content || ''))
+        .map((part: ContentBlock) => (typeof part === 'string' ? part : part.content || ''))
         .join('\n');
     }
 
@@ -262,7 +263,7 @@ ${truncatedText}`,
     const summaryText = extractTextFromResponse(summaryResponse);
 
     // 3. 用摘要替换所有消息
-    const summaryMessage: any = {
+    const summaryMessage: Message = {
       role: 'user',
       content: `[Compressed conversation at ${new Date(timestamp).toISOString()}]
 
@@ -277,11 +278,11 @@ Use the transcript file to recover full details if needed.`,
     };
 
     // 构建新的消息列表
-    const compacted: any[] = [summaryMessage];
+    const compacted: Message[] = [summaryMessage];
 
     // 保留系统消息（如果配置允许）
     if (cfg.preserveSystem) {
-      const systemMsgs = messages.filter((m: any) => m.role === 'system');
+      const systemMsgs = messages.filter((m) => m.role === 'system');
       compacted.unshift(...systemMsgs);
     }
 
@@ -299,7 +300,7 @@ Use the transcript file to recover full details if needed.`,
     // 如果 LLM 摘要失败，至少清理一下消息
     console.error('[Compaction] LLM summary failed:', error);
 
-    const fallbackSummary: any = {
+    const fallbackSummary: Message = {
       role: 'user',
       content: `[Compressed] ${messages.length} messages (summary failed, see ${transcriptPath})`,
     };
@@ -314,11 +315,11 @@ Use the transcript file to recover full details if needed.`,
 /**
  * 从 LLM 响应中提取文本内容
  */
-function extractTextFromResponse(response: any): string {
+function extractTextFromResponse(response: { content?: Array<{ type: string; text?: string }> }): string {
   if (!response.content) return '';
 
-  const textBlocks = response.content.filter((block: any) => block.type === 'text');
-  return textBlocks.map((block: any) => block.text || '').join('\n');
+  const textBlocks = response.content.filter((block) => block.type === 'text');
+  return textBlocks.map((block) => block.text || '').join('\n');
 }
 
 /**

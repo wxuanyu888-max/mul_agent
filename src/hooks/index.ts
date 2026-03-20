@@ -6,18 +6,19 @@ export * from "./predefined.js";
 
 // 便捷函数 - 快速注册hook
 import { globalHookRegistry, HookRegistry } from "./registry.js";
-import { defaultHookExecutor, HookExecutor, emit } from "./executor.js";
+import { HookExecutor, emit } from "./executor.js";
+import type { HookEventType, HookEvent } from "./types.js";
 
 /**
  * 注册一个hook的便捷方法
  */
 export function registerHook(
-  event: string,
-  handler: (event: any) => Promise<void> | void,
+  event: HookEventType,
+  handler: (event: HookEvent) => Promise<void> | void,
   options?: { priority?: number }
 ): void {
   globalHookRegistry.register({
-    event: event as any,
+    event,
     handler,
     priority: options?.priority,
   });

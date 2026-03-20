@@ -2,7 +2,7 @@
 import { exec as execAsync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { errorResult, jsonResult } from '../types.js';
-import { tmuxExec, initTmuxSession } from './tmux.js';
+import { initTmuxSession } from './tmux.js';
 
 const execPromise = promisify(execAsync);
 
@@ -13,6 +13,13 @@ export interface ExecParams {
   env?: Record<string, string>; // 环境变量
   shell?: string;           // 使用的 shell
   useTmux?: boolean;       // 是否使用 tmux 持久化会话
+}
+
+export interface ExecOptions {
+  timeout?: number;
+  cwd?: string;
+  env?: Record<string, string>;
+  shell?: string;
 }
 
 export interface ExecResult {
@@ -56,10 +63,10 @@ export function createExecTool() {
           result = await tmuxExec(command, { timeout, cwd });
         } else {
           // 直接执行（原有逻辑）
-          const options: any = {
+          const options: ExecOptions = {
             timeout,
             cwd,
-            env: { ...process.env, ...params.env },
+            env: { ...process.env, ...params.env } as Record<string, string>,
           };
 
           if (params.shell) {
@@ -81,9 +88,10 @@ export function createExecTool() {
           timedOut: result.timedOut,
           command,
         } as ExecResult);
-      } catch (error: any) {
+      } catch (error: unknown) {
         // 超时错误
-        if (error.killed || error.signal === 'SIGTERM') {
+        const err = error as { killed?: boolean; signal?: string; stdout?: string; stderr?: string; message?: string; code?: number };
+        if (err.killed || err.signal === 'SIGTERM') {
           return jsonResult({
             stdout: '',
             stderr: 'Command timed out',
@@ -95,9 +103,9 @@ export function createExecTool() {
 
         // 命令执行错误
         return jsonResult({
-          stdout: error.stdout || '',
-          stderr: error.stderr || error.message,
-          returnCode: error.code || -1,
+          stdout: err.stdout || '',
+          stderr: err.stderr || err.message || 'Unknown error',
+          returnCode: err.code || -1,
           command,
         } as ExecResult);
       }

@@ -67,6 +67,7 @@ export function createTasksRouter(): Router {
       subject: t.subject,
       description: t.description,
       status: t.status,
+      priority: t.priority,
       owner: t.owner,
       blockedBy: t.blockedBy.map(id => `task_${id}`),
       blocks: t.blocks.map(id => `task_${id}`),
@@ -108,6 +109,7 @@ export function createTasksRouter(): Router {
         subject: task.subject,
         description: task.description,
         status: task.status,
+        priority: task.priority,
         owner: task.owner,
         blockedBy: task.blockedBy.map(id => `task_${id}`),
         blocks: task.blocks.map(id => `task_${id}`),
@@ -177,6 +179,7 @@ export function createTasksRouter(): Router {
         subject: newTask.subject,
         description: newTask.description,
         status: newTask.status,
+        priority: newTask.priority,
         owner: newTask.owner,
         blockedBy: newTask.blockedBy.map(id => `task_${id}`),
         blocks: [],
@@ -249,6 +252,93 @@ export function createTasksRouter(): Router {
         subject: task.subject,
         description: task.description,
         status: task.status,
+        priority: task.priority,
+        owner: task.owner,
+        blockedBy: task.blockedBy.map(id => `task_${id}`),
+        blocks: task.blocks.map(id => `task_${id}`),
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      }
+    });
+  });
+
+  // PATCH /tasks/:id - Update task
+  router.patch('/tasks/:id', async (req: Request, res: Response) => {
+    const idStr = req.params.id as string;
+    const taskId = parseInt(idStr.replace('task_', ''), 10);
+    const { subject, description, priority, owner, blockedBy } = req.body;
+
+    if (isNaN(taskId)) {
+      res.status(400).json({ error: 'Invalid task ID' });
+      return;
+    }
+
+    const tasks = await loadTasks();
+    const taskIndex = tasks.findIndex(t => t.id === taskId);
+
+    if (taskIndex === -1) {
+      res.status(404).json({ error: 'Task not found' });
+      return;
+    }
+
+    const now = Date.now();
+    const task = tasks[taskIndex];
+
+    // Update fields
+    if (subject !== undefined) task.subject = subject;
+    if (description !== undefined) task.description = description;
+    if (priority !== undefined) task.priority = priority;
+    if (owner !== undefined) task.owner = owner;
+
+    // Handle blockedBy update
+    if (blockedBy !== undefined) {
+      const parseId = (id: string): number => {
+        const parsed = parseInt(String(id).replace('task_', ''), 10);
+        return isNaN(parsed) ? 0 : parsed;
+      };
+      const newBlockedBy: number[] = (blockedBy || []).map(parseId).filter((id: number) => id > 0);
+
+      // Remove from old blocked tasks
+      for (const t of tasks) {
+        if (t.id !== taskId && task.blockedBy.includes(t.id)) {
+          t.blocks = t.blocks.filter(id => id !== taskId);
+          t.updatedAt = now;
+          await fs.writeFile(
+            path.join(TASKS_DIR, `task_${t.id}.json`),
+            JSON.stringify(t, null, 2)
+          );
+        }
+      }
+
+      task.blockedBy = newBlockedBy;
+
+      // Add to new blocked tasks
+      for (const blockedId of newBlockedBy) {
+        const blockedTask = tasks.find(t => t.id === blockedId);
+        if (blockedTask && !blockedTask.blocks.includes(taskId)) {
+          blockedTask.blocks.push(taskId);
+          blockedTask.updatedAt = now;
+          await fs.writeFile(
+            path.join(TASKS_DIR, `task_${blockedId}.json`),
+            JSON.stringify(blockedTask, null, 2)
+          );
+        }
+      }
+    }
+
+    task.updatedAt = now;
+    await fs.writeFile(
+      path.join(TASKS_DIR, `task_${taskId}.json`),
+      JSON.stringify(task, null, 2)
+    );
+
+    res.json({
+      task: {
+        id: `task_${task.id}`,
+        subject: task.subject,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
         owner: task.owner,
         blockedBy: task.blockedBy.map(id => `task_${id}`),
         blocks: task.blocks.map(id => `task_${id}`),

@@ -3,11 +3,6 @@
 
 import type { EmbeddingProvider } from './base.js';
 
-interface TFIDFEntry {
-  term: string;
-  idf: number;
-}
-
 /**
  * 简单的 Offline Embedding 提供商
  * 使用词袋模型 + TF-IDF
@@ -95,11 +90,11 @@ export class OfflineEmbeddingProvider implements EmbeddingProvider {
 
     // 如果没有词汇表，返回随机向量
     if (this.vocabulary.size === 0) {
-      return new Array(128).fill(0).map(() => Math.random() * 0.1);
+      return Array.from({ length: 128 }, () => Math.random() * 0.1);
     }
 
     // 计算查询的 TF-IDF 向量
-    const vector = new Array(this.vocabulary.size).fill(0);
+    const vector = Array.from({ length: this.vocabulary.size }, () => 0);
     const uniqueTokens = new Set(tokens);
 
     for (const token of uniqueTokens) {

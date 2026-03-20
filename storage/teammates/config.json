@@ -1,0 +1,18 @@
+{
+  "teammates": [
+    {
+      "name": "designer",
+      "role": "API Designer",
+      "status": "SHUTDOWN",
+      "createdAt": "2026-03-20T16:38:10.941Z",
+      "prompt": "You are an API designer. Design clean and RESTful APIs."
+    },
+    {
+      "name": "developer",
+      "role": "Backend Developer",
+      "status": "SHUTDOWN",
+      "createdAt": "2026-03-20T16:38:10.944Z",
+      "prompt": "You are a backend developer. Implement APIs efficiently."
+    }
+  ]
+}

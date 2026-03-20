@@ -4,6 +4,7 @@ import type { Task, TaskStatus } from '../../types';
 export interface TaskFormData {
   subject: string;
   description: string;
+  priority?: number;
   owner?: string;
   blockedBy?: string[];
 }

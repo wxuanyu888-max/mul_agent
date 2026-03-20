@@ -4,7 +4,6 @@ import type {
   CommandArgs,
   CommandDetection,
   CommandHandler,
-  CommandArgsParsing,
   CommandArgValues,
 } from "./types.js";
 

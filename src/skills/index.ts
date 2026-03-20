@@ -14,6 +14,14 @@ export {
   getUserInvocableSkills,
 } from './loader.js';
 
+// Manager
+export {
+  skillCategories,
+  getEnabledSkills,
+  setSkillEnabled,
+  setCategoryEnabled,
+} from './manager.js';
+
 // Invoker
 export {
   SkillInvoker,

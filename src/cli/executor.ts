@@ -1,7 +1,7 @@
 // CLI 执行器
 import { CliRegistry, globalCliRegistry } from "./registry.js";
 import { parseArgs, validateOptions, withDefaults } from "./parsers/argv.js";
-import type { CliContext, CliArgs, CliCommand } from "./types.js";
+import type { CliContext } from "./types.js";
 
 export interface CliExecutorOptions {
   registry?: CliRegistry;

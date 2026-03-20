@@ -9,6 +9,7 @@ import {
   type SkillEntry,
   type OpenClawSkillMetadata,
   type SkillInvocationPolicy,
+  type SkillInstallSpec,
 } from './types.js';
 
 /**
@@ -28,12 +29,12 @@ export function parseFrontmatter(content: string): ParsedSkillFrontmatter {
   frontmatterRegex.lastIndex = 0;
   const lines = frontmatterStr.split('\n');
   let currentKey = '';
-  let currentValue: any = '';
+  let currentValue: string | undefined = undefined;
 
   for (const line of lines) {
     const colonIndex = line.indexOf(':');
     if (colonIndex !== -1) {
-      if (currentKey) {
+      if (currentKey && currentValue !== undefined) {
         data[currentKey.trim()] = currentValue.trim();
       }
       const key = line.slice(0, colonIndex).trim();
@@ -59,7 +60,7 @@ export function parseFrontmatter(content: string): ParsedSkillFrontmatter {
     }
   }
 
-  if (currentKey) {
+  if (currentKey && currentValue !== undefined) {
     data[currentKey] = currentValue.trim();
   }
 
@@ -110,26 +111,30 @@ export function resolveOpenClawMetadata(
   return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
-function parseRequirement(requires: any): Array<{ type: 'env' | 'tool' | 'feature'; name: string; description?: string }> {
+function parseRequirement(requires: unknown): Array<{ type: 'env' | 'tool' | 'feature'; name: string; description?: string }> {
   if (!requires) return [];
   if (Array.isArray(requires)) {
-    return requires.map((r: any) => {
+    return requires.map((r) => {
       if (typeof r === 'string') {
         const parts = r.split(':');
         return { type: (parts[0] || 'tool') as 'env' | 'tool' | 'feature', name: parts[1] || r };
       }
-      return { type: (r.type || 'tool') as 'env' | 'tool' | 'feature', name: r.name };
+      if (typeof r === 'object' && r !== null) {
+        const req = r as { type?: string; name?: string };
+        return { type: (req.type || 'tool') as 'env' | 'tool' | 'feature', name: req.name || '' };
+      }
+      return { type: 'tool' as const, name: String(r) };
     });
   }
   return [];
 }
 
-function parseInstallSpec(install: any): any[] {
+function parseInstallSpec(install: unknown): SkillInstallSpec[] {
   if (!install) return [];
   if (Array.isArray(install)) {
-    return install;
+    return install as SkillInstallSpec[];
   }
-  return [install];
+  return [install as SkillInstallSpec];
 }
 
 /**

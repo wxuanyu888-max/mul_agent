@@ -1,5 +1,5 @@
 // CLI 命令注册表
-import type { CliCommand, CliAction, CliArgs } from "./types.js";
+import type { CliCommand } from "./types.js";
 
 export class CliRegistry {
   private commands: Map<string, CliCommand> = new Map();

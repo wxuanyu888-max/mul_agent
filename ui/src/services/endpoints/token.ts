@@ -1,4 +1,4 @@
-import type { TokenUsageSummary, TokenUsageDetails, AllAgentsTokenUsage } from '../../types';
+import type { TokenUsageDetails, AllAgentsTokenUsage } from '../../types';
 import client from './client';
 
 export const tokenUsageApi = {

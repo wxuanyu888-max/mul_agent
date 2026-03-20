@@ -29,13 +29,17 @@ interface TokenUsageDetails {
  * 将 LLM 日志转换为前端兼容格式
  */
 function transformLlmLogForFrontend(log: LlmCallLog): Record<string, unknown> {
+  // 类型断言
+  const rawReq = log.rawRequest as { system?: string; messages?: Array<{ role?: string; content?: string }> } | undefined;
+  const rawRes = log.rawResponse as { content?: string | Array<{ type: string; text?: string }> } | undefined;
+
   // 构建完整的输入文本（包含所有消息）
   let inputText = '';
-  if (log.rawRequest?.system) {
-    inputText += `[System]: ${log.rawRequest.system}\n\n`;
+  if (rawReq?.system) {
+    inputText += `[System]: ${rawReq.system}\n\n`;
   }
-  if (log.rawRequest?.messages) {
-    for (const msg of log.rawRequest.messages) {
+  if (rawReq?.messages) {
+    for (const msg of rawReq.messages) {
       const role = msg.role || 'unknown';
       const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
       inputText += `[${role}]: ${content}\n`;
@@ -46,13 +50,13 @@ function transformLlmLogForFrontend(log: LlmCallLog): Record<string, unknown> {
   let outputText = '-';
   let toolCalls: Array<{ name: string; input: string }> = [];
 
-  if (log.rawResponse?.content) {
+  if (rawRes?.content) {
     // content 可能是字符串，也可能是数组
-    if (typeof log.rawResponse.content === 'string') {
-      outputText = log.rawResponse.content;
-    } else if (Array.isArray(log.rawResponse.content)) {
+    if (typeof rawRes.content === 'string') {
+      outputText = rawRes.content;
+    } else if (Array.isArray(rawRes.content)) {
       // 遍历找到 type === 'text' 的元素
-      const textBlock = log.rawResponse.content.find((b: any) => b.type === 'text');
+      const textBlock = rawRes.content.find((b): b is { type: string; text?: string } => b.type === 'text');
       outputText = textBlock?.text || '-';
     }
   }
@@ -68,11 +72,13 @@ function transformLlmLogForFrontend(log: LlmCallLog): Record<string, unknown> {
   }
   const toolCallsMap: Map<string, ToolCallWithResult> = new Map();
 
-  if (log.rawRequest?.messages) {
-    const messages = log.rawRequest.messages;
+  type MsgWithToolCallId = { role?: string; tool_call_id?: string; content?: string };
+
+  if (rawReq?.messages) {
+    const messages = rawReq.messages as MsgWithToolCallId[];
 
     // 找到最后一条 assistant 消息（包含本次 LLM 调用返回的 tool_calls）
-    let lastAssistantMsg = null;
+    let lastAssistantMsg: { role?: string; content?: string } | null = null;
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === 'assistant' && messages[i].content) {
         lastAssistantMsg = messages[i];
@@ -116,8 +122,9 @@ function transformLlmLogForFrontend(log: LlmCallLog): Record<string, unknown> {
   }
 
   // 也尝试从 rawResponse 提取 tool_calls（如果有的话）
-  if (log.rawResponse?.tool_calls && Array.isArray(log.rawResponse.tool_calls)) {
-    for (const tc of log.rawResponse.tool_calls) {
+  const rawResWithToolCalls = log.rawResponse as { tool_calls?: Array<{ id?: string; name?: string; function?: { name?: string; arguments?: string | Record<string, unknown> } }> } | undefined;
+  if (rawResWithToolCalls?.tool_calls && Array.isArray(rawResWithToolCalls.tool_calls)) {
+    for (const tc of rawResWithToolCalls.tool_calls) {
       const id = tc.id || `tc_${Math.random().toString(36).substring(7)}`;
       const name = tc.function?.name || tc.name || 'unknown';
       const input = typeof tc.function?.arguments === 'string'

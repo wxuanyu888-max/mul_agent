@@ -167,7 +167,7 @@ export class ToolLoop {
   /**
    * 检查命令是否存在
    */
-  private commandExists(command: string): boolean {
+  private commandExists(_command: string): boolean {
     // 简化实现，实际应该检查 PATH
     const path = process.env.PATH ?? '';
     const commands = path.split(':');

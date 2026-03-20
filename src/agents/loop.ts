@@ -73,7 +73,7 @@ export interface AgentLoopConfig {
   /** 压缩配置 */
   compaction?: CompactionConfig;
   /** 手动触发压缩的回调 */
-  onManualCompact?: (messages: any[]) => Promise<void>;
+  onManualCompact?: (messages: Message[]) => Promise<void>;
 }
 
 /**
@@ -457,7 +457,7 @@ export class AgentLoop {
         const tools = this.getToolDefinitions();
 
         // 调用 LLM
-        this.config.onLlmCall(messages, systemPrompt);
+        this.config.onLlmCall(toLLMMessages(messages), systemPrompt);
 
         const response = await llm.chat({
           model: (llm as any).model,

@@ -5,7 +5,6 @@
  */
 
 import type {
-  EmbeddingProvider,
   EmbeddingProviderResult,
   EmbeddingProviderOptions,
 } from '../types.js';
@@ -26,7 +25,7 @@ export { createOfflineEmbeddingProvider, OfflineEmbeddingProvider } from './offl
 export async function createEmbeddingProvider(
   options: EmbeddingProviderOptions
 ): Promise<EmbeddingProviderResult> {
-  const { provider: requestedProvider, fallback = 'none' } = options;
+  const { provider: _requestedProvider, fallback = 'none' } = options;
 
   // Try to create the requested provider
   const result = await tryCreateProvider(options);

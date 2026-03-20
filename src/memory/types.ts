@@ -4,7 +4,7 @@
  * Complete type definitions for the memory system based on OpenClaw.
  */
 
-import type { DatabaseSync } from 'node:sqlite';
+// import type { DatabaseSync } from 'node:sqlite';
 
 // ============================================================================
 // Core Types

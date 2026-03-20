@@ -29,7 +29,7 @@ export function createTeammateBroadcastTool() {
     execute: async (_toolCallId: string, params: Record<string, unknown>) => {
       try {
         const content = params.content as string;
-        const msgType = params.msg_type as string | undefined;
+        const _msgType = params.msg_type as string | undefined;
 
         if (!content) {
           return errorResult('content is required');

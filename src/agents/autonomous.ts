@@ -295,8 +295,10 @@ export function createAutonomousAgent(config: AutonomousConfig): {
       }));
 
       // 运行一轮
+      const lastMessage = messages[messages.length - 1];
+      const lastContent = typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content);
       const result = await loop.run({
-        message: messages[messages.length - 1].content,
+        message: lastContent,
         history: messages.slice(0, -1),
       });
 

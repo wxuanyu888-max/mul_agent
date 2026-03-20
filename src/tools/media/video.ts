@@ -351,7 +351,7 @@ export function createVideoTool(sessionId?: string) {
     }) => {
       try {
         const { action, source, options = {} } = params;
-        const { language = "auto", model = "tiny", maxDuration = 3600 } = options;
+        const { language: _language = "auto", model = "tiny", maxDuration = 3600 } = options;
 
         // 检查依赖
         if (action === "check-deps") {
@@ -562,7 +562,7 @@ export function createVideoTool(sessionId?: string) {
                   path: `${targetDir}/transcript.json`,
                   description: 'Detailed transcription with timestamps'
                 });
-              } catch (error) {
+              } catch (_error) {
                 // 转写文件可能不存在
               }
             } else {

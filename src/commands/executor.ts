@@ -1,7 +1,6 @@
 // Command 执行器 - 处理命令执行
 import type {
   ChatCommandDefinition,
-  CommandArgs,
   CommandContext,
   CommandHandlerResult,
 } from "./types.js";

@@ -6,8 +6,8 @@ export * from "./predefined.js";
 
 // 便捷函数 - 快速注册命令
 import { globalCommandRegistry, CommandRegistry } from "./registry.js";
-import { defaultCommandExecutor, CommandExecutor, executeCommand, listCommands, getCommandHelp } from "./executor.js";
-import type { ChatCommandDefinition, CommandHandler, CommandContext, CommandArgs } from "./types.js";
+import { CommandExecutor, executeCommand, listCommands, getCommandHelp } from "./executor.js";
+import type { ChatCommandDefinition, CommandHandler } from "./types.js";
 
 /**
  * 注册一个命令的便捷方法

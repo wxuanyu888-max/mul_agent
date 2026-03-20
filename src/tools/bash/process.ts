@@ -1,6 +1,6 @@
 // 进程管理工具 - process
 import { spawn, type ChildProcess } from 'node:child_process';
-import { errorResult, jsonResult } from '../types.js';
+import { errorResult, jsonResult, type JsonToolResult } from '../types.js';
 
 // 存储运行中的进程
 const runningProcesses = new Map<string, ChildProcess>();
@@ -73,7 +73,7 @@ export function createProcessTool() {
   };
 }
 
-function startProcess(command: string, cwd?: string, env?: Record<string, string>): any {
+function startProcess(command: string, cwd?: string, env?: Record<string, string>): JsonToolResult {
   const processId = generateProcessId();
 
   const child = spawn(command, [], {
@@ -97,7 +97,7 @@ function startProcess(command: string, cwd?: string, env?: Record<string, string
     stderr += data.toString();
   });
 
-  child.on('exit', (code) => {
+  child.on('exit', (_code) => {
     runningProcesses.delete(processId);
   });
 
@@ -109,7 +109,7 @@ function startProcess(command: string, cwd?: string, env?: Record<string, string
   });
 }
 
-function listProcesses(): any {
+function listProcesses(): JsonToolResult {
   const processes = Array.from(runningProcesses.entries()).map(([id, proc]) => ({
     processId: id,
     pid: proc.pid,
@@ -123,7 +123,7 @@ function listProcesses(): any {
   });
 }
 
-function killProcess(processId: string): any {
+function killProcess(processId: string): JsonToolResult {
   const proc = runningProcesses.get(processId);
 
   if (!proc) {
@@ -139,7 +139,7 @@ function killProcess(processId: string): any {
   });
 }
 
-function getProcessStatus(processId: string): any {
+function getProcessStatus(processId: string): JsonToolResult {
   const proc = runningProcesses.get(processId);
 
   if (!proc) {

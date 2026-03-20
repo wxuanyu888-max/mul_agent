@@ -1,6 +1,6 @@
 // Sessions List 工具
 import { jsonResult, errorResult } from "../types.js";
-import { querySessions, getActiveSessions } from "../../session/index.js";
+import { querySessions } from "../../session/index.js";
 
 export function createSessionsListTool() {
   return {

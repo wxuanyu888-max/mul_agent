@@ -24,7 +24,7 @@ export class HookRegistry {
   /**
    * 注销一个钩子
    */
-  unregister(event: HookEventType, handler: (event: any) => Promise<void> | void): void {
+  unregister(event: HookEventType, handler: (event: unknown) => Promise<void> | void): void {
     const handlers = this.handlers.get(event);
     if (handlers) {
       const index = handlers.findIndex((h) => h.handler === handler);
@@ -79,13 +79,13 @@ export const globalHookRegistry = new HookRegistry();
  */
 export function hook(event: HookEventType, priority?: number) {
   return function (
-    target: any,
+    target: unknown,
     propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (...args: unknown[]) {
       // 这里可以添加自动注册逻辑
       return originalMethod.apply(this, args);
     };

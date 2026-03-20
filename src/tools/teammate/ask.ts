@@ -86,8 +86,6 @@ function waitForAnswer(requestId: string, timeoutMs: number): AskRequest | null 
       return request;
     }
 
-    // 等待后再检查
-    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     // 同步等待
     const elapsed = Date.now() - startTime;
     if (elapsed >= timeoutMs) break;

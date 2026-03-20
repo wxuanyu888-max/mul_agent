@@ -8,7 +8,7 @@
  * 4. Workspace - 工作文件（Agent 主动读取）
  */
 
-import { getSession, addMessage, type Session } from '../session/index.js';
+import { getSession, addMessage } from '../session/index.js';
 import { MemoryIndexManager, getMemoryIndexManager } from './manager.js';
 import type { MemorySearchConfig, MemorySearchResult } from './types.js';
 
@@ -219,7 +219,6 @@ export class UnifiedMemoryManager {
 
     try {
       const fs = await import('node:fs/promises');
-      const path = await import('node:path');
       const safePath = this.validatePath(this.config.remote.filePath);
       const content = await fs.readFile(safePath, 'utf-8');
       const data = JSON.parse(content);
@@ -299,7 +298,7 @@ export class UnifiedMemoryManager {
    * 写入向量记忆
    * - 内容会被分块、向量化、存入向量库
    */
-  async addVectorMemory(content: string, metadata?: Record<string, unknown>): Promise<void> {
+  async addVectorMemory(content: string, _metadata?: Record<string, unknown>): Promise<void> {
     if (!this.config.enabled.vector || !this.vectorManager) {
       return;
     }
@@ -347,7 +346,7 @@ export class UnifiedMemoryManager {
 
         files.push(path.join(directory, entry.name));
       }
-    } catch (error) {
+    } catch (_error) {
       // 目录不存在，忽略
     }
 

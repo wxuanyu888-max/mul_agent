@@ -5,7 +5,7 @@
  */
 
 import type { EmbeddingProvider } from '../types.js';
-import { sanitizeAndNormalizeEmbedding, getDefaultEmbeddingModel } from './base.js';
+import { sanitizeAndNormalizeEmbedding } from './base.js';
 
 export interface GeminiEmbeddingConfig {
   apiKey?: string;

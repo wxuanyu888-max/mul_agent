@@ -9,13 +9,23 @@ import {
 } from './types.js';
 
 /**
+ * Skill 工具执行结果
+ */
+export interface SkillToolResult {
+  tool: string;
+  success: boolean;
+  result?: unknown;
+  error?: string;
+}
+
+/**
  * 工具接口 - 不依赖外部库
  */
 export interface Tool {
   label: string;
   name: string;
   description: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   execute: (toolCallId: string, params: Record<string, any>) => Promise<ToolResult>;
 }
 
@@ -95,17 +105,17 @@ export class SkillInvoker {
 
     try {
       // 解析 skill 内容中的命令和工具
-      const parsedCommands = this.parseCommands(skill);
-      const parsedTools = this.parseTools(skill);
+      // 注意: parsedCommands 和 parsedTools 保留用于未来扩展
+      this.parseCommands(skill);
+      this.parseTools(skill);
 
-      // 构建执行上下文
-      const context = {
+      // 构建执行上下文（保留用于未来扩展）
+      const _context = {
         skill,
         args: args || {},
         tools: this.tools,
         sessionKey: this.sessionKey,
         config: this.config,
-        commands: parsedCommands,
         availableTools: Array.from(this.tools.keys()),
       };
 
@@ -117,10 +127,11 @@ export class SkillInvoker {
         success: true,
         output,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        error: error.message || 'Unknown error',
+        error: message,
       };
     }
   }
@@ -142,8 +153,8 @@ export class SkillInvoker {
   /**
    * 执行 skill 内的工具调用
    */
-  async executeToolCalls(toolCalls: SkillToolCall[]): Promise<{ success: boolean; results: any[] }> {
-    const results: any[] = [];
+  async executeToolCalls(toolCalls: SkillToolCall[]): Promise<{ success: boolean; results: SkillToolResult[] }> {
+    const results: SkillToolResult[] = [];
 
     for (const call of toolCalls) {
       const tool = this.tools.get(call.tool);
@@ -164,11 +175,12 @@ export class SkillInvoker {
           success: true,
           result,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Tool execution failed';
         results.push({
           tool: call.tool,
           success: false,
-          error: error.message || 'Tool execution failed',
+          error: message,
         });
       }
     }
