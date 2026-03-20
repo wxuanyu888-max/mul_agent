@@ -179,7 +179,7 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
       toolCalls.forEach((tool, toolIdx) => {
         if (calls.length < MAX_TOOL_CALLS) {
           calls.push({
-            id: `${log.agent_id}-${log.timestamp}-${toolIdx}`,
+            id: `tool-${logIdx}-${toolIdx}`, // 使用 logIdx 和 toolIdx 确保唯一性
             agent_id: log.agent_id,
             timestamp: log.timestamp,
             toolName: tool.name,
@@ -219,6 +219,7 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
 
   const handleTable3PageChange = (newPage: number) => {
     setTable3Page(newPage);
+    setExpandedLogIds(new Set()); // 切换分页时重置展开状态
   };
 
   const handleTable4PageChange = (newPage: number) => {
@@ -804,7 +805,13 @@ const TokenUsagePanel: React.FC<TokenUsagePanelProps> = ({ agentId }) => {
                                 Tool 输入参数
                               </span>
                               <pre className="mt-1 p-3 bg-white dark:bg-gray-800 rounded text-xs overflow-x-auto border dark:border-gray-700">
-                                {JSON.stringify(JSON.parse(call.input || '{}'), null, 2)}
+                                {(() => {
+                                  try {
+                                    return JSON.stringify(JSON.parse(call.input || '{}'), null, 2);
+                                  } catch {
+                                    return call.input || '{}';
+                                  }
+                                })()}
                               </pre>
                             </div>
                           </div>

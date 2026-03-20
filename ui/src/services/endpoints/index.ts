@@ -6,4 +6,5 @@ export { infoApi } from './info';
 export { projectsApi } from './projects';
 export { tokenUsageApi } from './token';
 export { integrationsApi } from './integrations';
+export * as tasksApi from './tasks';
 export { default as api } from './client';

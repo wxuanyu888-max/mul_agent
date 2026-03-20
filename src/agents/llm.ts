@@ -158,13 +158,9 @@ export class LLMClient {
         model: requestInfo.model,
         messages: body.messages,
         system: body.system,
+        tools: body.tools,
       },
-      rawResponse: {
-        id: data.id,
-        content: responseText,
-        usage: data.usage,
-        stop_reason: data.stop_reason,
-      },
+      rawResponse: data, // 保存完整的API响应，包括tool_calls
     });
 
     return data;

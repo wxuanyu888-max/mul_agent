@@ -201,3 +201,25 @@ export interface InteractionHistoryModalProps {
   edgeId?: string;
   onClose: () => void;
 }
+
+// Task Types
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'deleted';
+
+export interface Task {
+  id: string;
+  subject: string;
+  description: string;
+  status: TaskStatus;
+  owner?: string;
+  blockedBy: string[];  // IDs of tasks that block this task
+  blocks: string[];     // IDs of tasks that this task blocks
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TaskFormData {
+  subject: string;
+  description: string;
+  owner?: string;
+  blockedBy?: string[];
+}

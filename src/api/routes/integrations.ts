@@ -21,6 +21,14 @@ interface Integration {
 // In-memory integrations storage
 const integrationsStore: Record<string, Integration> = {};
 
+// Global LLM config storage
+const globalConfig: { url: string; provider: string; model: string; has_key: boolean } = {
+  url: '',
+  provider: 'openai',
+  model: 'gpt-4',
+  has_key: false
+};
+
 export function createIntegrationsRouter(): Router {
   const router = Router();
 
@@ -134,6 +142,42 @@ export function createIntegrationsRouter(): Router {
 
     // Just acknowledge the reorder request
     res.json({ status: 'success', message: 'Integrations reordered' });
+  });
+
+  // Global LLM Config endpoints
+  // GET /llm-config
+  router.get('/llm-config', (req: Request, res: Response) => {
+    res.json({
+      url: globalConfig.url || '',
+      provider: globalConfig.provider || 'openai',
+      model: globalConfig.model || 'gpt-4',
+      has_key: !!globalConfig.has_key
+    });
+  });
+
+  // POST /llm-config
+  router.post('/llm-config', (req: Request, res: Response) => {
+    const { url, provider, model, key } = req.body;
+    globalConfig.url = url || '';
+    globalConfig.provider = provider || 'openai';
+    globalConfig.model = model || 'gpt-4';
+    if (key) globalConfig.has_key = true;
+    res.json({
+      status: 'success',
+      url: globalConfig.url,
+      provider: globalConfig.provider,
+      model: globalConfig.model,
+      has_key: globalConfig.has_key
+    });
+  });
+
+  // DELETE /llm-config
+  router.delete('/llm-config', (req: Request, res: Response) => {
+    globalConfig.url = '';
+    globalConfig.provider = 'openai';
+    globalConfig.model = 'gpt-4';
+    globalConfig.has_key = false;
+    res.json({ status: 'success', message: 'Global config deleted' });
   });
 
   return router;

@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { useUIStore } from './stores';
-import { MessageSquare, Activity, FileText, Database, Bot, BarChart3, Key, Loader2 } from 'lucide-react';
+import { MessageSquare, Activity, FileText, Database, Bot, BarChart3, Key, Loader2, CheckSquare } from 'lucide-react';
 
 // Lazy load all panels except Chat (Chat stays always loaded for UX)
 const ChatPanel = lazy(() => import('./components/chat/ChatPanel').then(m => ({ default: m.ChatPanel })));
@@ -9,8 +9,9 @@ const LogViewer = lazy(() => import('./components/logs/LogViewer').then(m => ({ 
 const MemoryPanel = lazy(() => import('./components/memory/MemoryPanel').then(m => ({ default: m.MemoryPanel })));
 const TokenUsagePanel = lazy(() => import('./components/token/TokenUsagePanel').then(m => ({ default: m.default })));
 const IntegrationList = lazy(() => import('./components/settings/IntegrationList').then(m => ({ default: m.default })));
+const TaskPanel = lazy(() => import('./components/tasks').then(m => ({ default: m.TaskPanel })));
 
-type TabType = 'chat' | 'workflow' | 'logs' | 'memory' | 'token' | 'keys';
+type TabType = 'chat' | 'workflow' | 'tasks' | 'logs' | 'memory' | 'token' | 'keys';
 
 interface NavItem {
   id: TabType;
@@ -21,6 +22,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'chat', label: 'Chat', icon: MessageSquare },
   { id: 'workflow', label: 'Workflow', icon: Activity },
+  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
   { id: 'logs', label: 'Logs', icon: FileText },
   { id: 'memory', label: 'Memory', icon: Database },
   { id: 'token', label: 'Token', icon: BarChart3 },
@@ -99,6 +101,11 @@ function App() {
           <div className={`h-full ${activeTab === 'workflow' ? '' : 'hidden'}`}>
             <Suspense fallback={<PanelLoader />}>
               <WorkflowCanvas />
+            </Suspense>
+          </div>
+          <div className={`h-full ${activeTab === 'tasks' ? '' : 'hidden'}`}>
+            <Suspense fallback={<PanelLoader />}>
+              <TaskPanel />
             </Suspense>
           </div>
           <div className={`h-full ${activeTab === 'logs' ? '' : 'hidden'}`}>

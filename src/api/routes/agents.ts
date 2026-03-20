@@ -93,5 +93,22 @@ export function createAgentsRouter(): Router {
     });
   });
 
+  // GET /agent/state/:agent_id
+  router.get('/agent/state/:agent_id', (req: Request, res: Response) => {
+    const agent_id = req.params.agent_id as string;
+    // 返回默认的空闲状态
+    res.json({
+      state: {
+        agent_id,
+        status: 'idle',
+        current_action: null,
+        route: null,
+        elapsed_ms: 0,
+        last_updated: Date.now(),
+        details: null
+      }
+    });
+  });
+
   return router;
 }

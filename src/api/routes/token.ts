@@ -44,10 +44,59 @@ function transformLlmLogForFrontend(log: LlmCallLog): Record<string, unknown> {
 
   // 构建完整的输出文本
   let outputText = '-';
+  let toolCalls: Array<{ name: string; input: string }> = [];
+
   if (log.rawResponse?.content) {
-    outputText = typeof log.rawResponse.content === 'string'
-      ? log.rawResponse.content
-      : log.rawResponse.content[0]?.text || '-';
+    // content 可能是字符串，也可能是数组
+    if (typeof log.rawResponse.content === 'string') {
+      outputText = log.rawResponse.content;
+    } else if (Array.isArray(log.rawResponse.content)) {
+      // 遍历找到 type === 'text' 的元素
+      const textBlock = log.rawResponse.content.find((b: any) => b.type === 'text');
+      outputText = textBlock?.text || '-';
+    }
+  }
+
+  // 提取 tool_calls - 从 rawRequest.messages 中的 assistant 消息提取
+  // MiniMax API 将 tool_calls 以 JSON 字符串形式嵌入在消息 content 中
+  if (log.rawRequest?.messages) {
+    for (const msg of log.rawRequest.messages) {
+      if (msg.role === 'assistant' && msg.content) {
+        const content = typeof msg.content === 'string' ? msg.content : '';
+        // 尝试从 content 中提取 tool_calls JSON
+        try {
+          // 匹配 {"tool_calls":[...]} 格式
+          const toolCallsMatch = content.match(/\{[\s\S]*"tool_calls"[\s\S]*\}/);
+          if (toolCallsMatch) {
+            const parsed = JSON.parse(toolCallsMatch[0]);
+            if (parsed.tool_calls && Array.isArray(parsed.tool_calls)) {
+              for (const tc of parsed.tool_calls) {
+                toolCalls.push({
+                  name: tc.name || tc.function?.name || 'unknown',
+                  input: typeof tc.input === 'string'
+                    ? tc.input
+                    : JSON.stringify(tc.input || tc.function?.arguments || {}),
+                });
+              }
+            }
+          }
+        } catch {
+          // 忽略解析错误
+        }
+      }
+    }
+  }
+
+  // 也尝试从 rawResponse 提取 tool_calls（如果有的话）
+  if (log.rawResponse?.tool_calls && Array.isArray(log.rawResponse.tool_calls)) {
+    for (const tc of log.rawResponse.tool_calls) {
+      toolCalls.push({
+        name: tc.function?.name || tc.name || 'unknown',
+        input: typeof tc.function?.arguments === 'string'
+          ? tc.function.arguments
+          : JSON.stringify(tc.function?.arguments || {}),
+      });
+    }
   }
 
   return {
@@ -58,6 +107,7 @@ function transformLlmLogForFrontend(log: LlmCallLog): Record<string, unknown> {
     output_tokens: log.completionTokens || 0,
     input_text: inputText || '-',
     output_text: outputText,
+    tool_calls: toolCalls,
     // 保留完整原始数据供展开查看
     raw_request: log.rawRequest,
     raw_response: log.rawResponse,

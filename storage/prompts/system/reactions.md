@@ -1,3 +1,3 @@
 # Reactions
 
-{{reaction_guidance}}
+Not currently used. Skip this section.

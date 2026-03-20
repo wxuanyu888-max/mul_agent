@@ -9,25 +9,26 @@
 ### Start Agent Service
 
 ```bash
-# Activate virtual environment
-source .venv/bin/activate
-
-# Start core brain
-python -m mul_agent.main
-```
-
-### Development
-
-```bash
 # Install dependencies
 pnpm install
 
 # Start frontend dev server
 cd ui && pnpm dev
 
+# Start API server (in another terminal)
+pnpm api:dev
+```
+
+### Development
+
+```bash
 # Run tests
-pnpm test
-pytest
+pnpm test:run
+pytest tests/
+
+# Lint and format
+pnpm lint
+pnpm format:write
 ```
 
 ---
@@ -36,25 +37,52 @@ pytest
 
 ```
 mul-agent/
-├── mul_agent/              # Core Python backend
-│   ├── api/                # FastAPI server
-│   ├── brain/              # Agent brain system
-│   ├── handlers/           # Route handlers
-│   ├── tools/              # Built-in tools
-│   └── commands/           # Command system
+├── src/                      # TypeScript main codebase
+│   ├── agents/               # Agent core system
+│   │   ├── loop.ts          # Agent loop engine
+│   │   ├── prompt/          # Prompt builder
+│   │   ├── llm.ts          # LLM client
+│   │   ├── compaction.ts   # Context compaction
+│   │   ├── session.ts      # Session management
+│   │   ├── subagent.ts     # Sub-agent support
+│   │   ├── teammate.ts     # Teammate system
+│   │   └── autonomous.ts   # Autonomous agent
+│   │
+│   ├── api/routes/          # Express API routes
+│   │   ├── agents.ts       # Agent management
+│   │   ├── chat.ts        # Chat & message queue
+│   │   ├── memory.ts       # Memory endpoints
+│   │   └── ...
+│   │
+│   ├── tools/               # Tool system
+│   │   ├── file/           # File operations (read/write/edit)
+│   │   ├── bash/           # Command execution
+│   │   ├── browser/        # Browser automation
+│   │   └── ...
+│   │
+│   ├── memory/             # Memory system
+│   ├── providers/          # LLM providers
+│   ├── session/            # Session management
+│   ├── message/            # Message queue
+│   ├── skills/            # Skill system
+│   ├── hooks/             # Hook system
+│   ├── logger/            # Logger
+│   ├── commands/           # Command system
+│   └── cli/                # CLI tools
 │
-├── ui/                     # React + TypeScript UI
-│   ├── src/
-│   │   ├── components/
-│   │   ├── services/
-│   │   └── utils/
-│   ├── tests/
-│   └── package.json
+├── ui/                      # React + TypeScript UI
+├── storage/                 # Runtime data (gitignored)
+│   ├── prompts/            # Prompt templates
+│   │   ├── templates/      # Templates (full/minimal/none)
+│   │   └── system/         # System modules
+│   ├── sessions/           # Session persistence
+│   ├── memory/             # Vector memory
+│   └── logs/               # Log files
 │
-├── docs/                   # Documentation (Mintlify)
-├── tests/                  # Python tests
-├── skills/                 # Custom skills
-└── storage/                # Runtime data (gitignored)
+├── skills/                  # Custom skills
+├── docs/                    # Documentation (Mintlify)
+├── tests/                   # Test files
+└── scripts/                 # Utility scripts
 ```
 
 ---
@@ -63,13 +91,13 @@ mul-agent/
 
 | Layer | Technology |
 |-------|------------|
-| **Backend** | Python 3.13, FastAPI |
-| **Frontend** | React 19, TypeScript, Vite |
-| **Testing** | pytest, Vitest, Playwright |
-| **Linting** | Ruff (Python), Oxlint (TS) |
-| **Formatting** | Ruff (Python), Oxfmt (TS) |
+| **Main Backend** | Node.js 22+, TypeScript, Express 5 |
+| **Auxiliary** | Python 3.10+ (embeddings, utilities) |
+| **Frontend** | React 19, TypeScript, Vite 6 |
+| **LLM Providers** | Anthropic, OpenAI, Ollama, MiniMax |
+| **Testing** | Vitest, Playwright, pytest |
+| **Linting** | Oxlint, Oxfmt (TS), Ruff (Python) |
 | **Docs** | Mintlify |
-| **CI/CD** | GitHub Actions |
 
 ---
 
@@ -77,18 +105,19 @@ mul-agent/
 
 ### Code Quality
 
-**Python:**
-```bash
-ruff check mul_agent/
-ruff format mul_agent/
-pytest tests/
-```
-
 **TypeScript:**
 ```bash
-pnpm lint
-pnpm format:check
-pnpm test:run
+pnpm lint              # Oxlint check
+pnpm format:write     # Oxfmt format
+pnpm typecheck        # Type check
+pnpm test:run         # Run tests
+```
+
+**Python:**
+```bash
+ruff check .          # Ruff check
+ruff format .         # Ruff format
+pytest tests/         # Run tests
 ```
 
 ### Pre-commit Hooks
@@ -99,39 +128,16 @@ pip install pre-commit
 pre-commit install
 ```
 
-Hooks will run on every commit:
-- Trailing whitespace removal
-- End-of-file fixer
-- YAML check
-- Secret detection
-- Ruff linting (Python)
-- Oxlint (TypeScript)
-- Oxfmt check (TypeScript)
+Hooks will run on every commit.
 
 ---
 
 ## Testing
 
-### Python Tests
-
-```bash
-# Run all tests
-pytest tests/
-
-# Run with coverage
-pytest tests/ --cov=mul_agent --cov-report=html
-
-# Run specific test file
-pytest tests/test_router.py -v
-```
-
 ### Frontend Tests
 
 ```bash
 # Run tests
-cd ui && pnpm test
-
-# Run once and exit
 pnpm test:run
 
 # Run with coverage
@@ -139,6 +145,12 @@ pnpm test:coverage
 
 # E2E tests
 pnpm test:e2e
+```
+
+### Python Tests
+
+```bash
+pytest tests/
 ```
 
 ---
@@ -152,13 +164,8 @@ pnpm test:e2e
 npm install -g mintlify
 
 # Start local docs server
-npx mintlify dev
+cd docs && npx mintlify dev
 ```
-
-### Add New Documentation
-
-1. Create `.mdx` file in `docs/` directory
-2. Register in `mint.json` navigation
 
 ---
 
@@ -167,15 +174,15 @@ npx mintlify dev
 | File | Purpose |
 |------|---------|
 | `package.json` | Node.js project config |
-| `pnpm-workspace.yaml` | pnpm workspace definition |
-| `tsconfig.json` | TypeScript configuration |
+| `pnpm-workspace.yaml` | pnpm workspace |
+| `tsconfig.json` | TypeScript config |
 | `oxlint.json` | Oxlint rules |
 | `oxfmt.config.json` | Oxfmt settings |
-| `ruff.toml` | Ruff (Python) config |
 | `pyproject.toml` | Python project config |
-| `vitest.config.ts` | Vitest test config |
+| `ruff.toml` | Ruff config |
+| `vitest.config.ts` | Vitest config |
 | `.pre-commit-config.yaml` | Pre-commit hooks |
-| `mint.json` | Mintlify docs config |
+| `mint.json` | Mintlify config |
 
 ---
 
@@ -184,32 +191,14 @@ npx mintlify dev
 ### Root Level
 
 ```bash
-pnpm lint              # Run Oxlint
-pnpm lint:fix          # Fix Oxlint issues
-pnpm format:check      # Check formatting
-pnpm format:write      # Format code
-pnpm check             # Run lint + format check
-pnpm typecheck         # TypeScript type check
-pnpm clean             # Clean build artifacts
-```
-
-### Frontend
-
-```bash
-pnpm dev              # Start dev server
+pnpm dev              # Start dev server (frontend)
+pnpm api:dev         # Start API server
 pnpm build            # Build for production
-pnpm preview          # Preview production build
-pnpm test             # Run tests
-pnpm test:e2e         # Run E2E tests
-```
-
-### Backend (Python)
-
-```bash
-python -m mul_agent.main       # Start agent
-pytest tests/                  # Run tests
-ruff check mul_agent/          # Lint Python
-ruff format mul_agent/         # Format Python
+pnpm lint             # Run Oxlint
+pnpm format:write    # Format code
+pnpm typecheck       # Type check
+pnpm test:run        # Run tests
+pnpm test:e2e       # Run E2E tests
 ```
 
 ---
@@ -221,36 +210,28 @@ Copy `.env.example` to `.env` and configure:
 ```bash
 ANTHROPIC_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
+OLLAMA_BASE_URL=http://localhost:11434
 ```
 
 ---
 
-## Deployment
+## Cleanup (Reference Code)
 
-### Docker
+The following directories contain reference code and can be removed:
 
 ```bash
-docker build -t mul-agent .
-docker run -p 8000:8000 mul-agent
+# OpenClaw reference extensions (42 subdirectories)
+rm -rf extensions/
+
+# OpenClaw reference code
+rm -rf openclaw/
+
+# Reference project
+rm -rf agentrx/
+
+# Python build metadata
+rm -rf src/mul_agent.egg-info/
 ```
-
-### Production
-
-1. Build frontend: `cd ui && pnpm build`
-2. Install Python deps: `pip install -e .`
-3. Set environment variables
-4. Start: `python -m mul_agent.main`
-
----
-
-## Contributing
-
-1. Create a branch: `git checkout -b feature/xxx`
-2. Make changes
-3. Run quality checks: `./scripts/quality-check.sh`
-4. Commit: `git commit -m "feat: description"`
-5. Push: `git push origin feature/xxx`
-6. Create Pull Request
 
 ---
 

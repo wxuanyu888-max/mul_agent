@@ -85,7 +85,13 @@
       "Bash(cd \"D:/Resource/200-项目/220-计算机/220-005-mul_agent\" && mv mul-agent-main/* . && mv mul-agent-main/.* . 2>/dev/null; rmdir mul-agent-main && ls -la)",
       "mcp__chrome-devtools__list_pages",
       "mcp__chrome-devtools__navigate_page",
-      "mcp__chrome-devtools__take_snapshot"
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__chrome-devtools__click",
+      "mcp__chrome-devtools__list_console_messages",
+      "mcp__chrome-devtools__fill",
+      "mcp__chrome-devtools__close_page"
     ]
   },
   "enableAllProjectMcpServers": true,

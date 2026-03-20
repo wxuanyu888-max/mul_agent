@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type TabType = 'chat' | 'workflow' | 'logs' | 'memory' | 'token' | 'keys';
+type TabType = 'chat' | 'workflow' | 'tasks' | 'logs' | 'memory' | 'token' | 'keys';
 
 interface UIState {
   activeTab: TabType;

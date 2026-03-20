@@ -347,15 +347,22 @@ function formatToolList(tools: ToolInfo[]): string {
 }
 
 /**
- * 格式化技能列表 - 渐进式披露，默认只显示 name, description, location
+ * 格式化技能列表 - 简化版本，只显示核心技能
  */
 function formatSkills(skills: SkillInfo[]): string {
   if (skills.length === 0) {
     return ''; // 不显示技能部分
   }
 
-  // 默认只显示 name, description, location（渐进式披露）
-  const skillList = skills
+  // 只显示最重要的 3 个技能，其他的需要时再添加
+  const coreSkills = skills.filter(s =>
+    s.name === 'github' || s.name === 'coding-agent' || s.name === 'gh-issues'
+  );
+
+  // 如果没有核心技能，显示前 3 个
+  const displaySkills = coreSkills.length > 0 ? coreSkills : skills.slice(0, 3);
+
+  const skillList = displaySkills
     .map((s) => `- \`${s.name}\`: ${s.description} (location: ${s.location})`)
     .join('\n');
 

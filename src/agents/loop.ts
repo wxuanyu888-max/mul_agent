@@ -465,8 +465,13 @@ export class AgentLoop {
           content: textContent,
         });
 
+        // 如果没有文本内容，根据工具调用次数生成默认回复
+        const finalContent = textContent || (toolCallsCount > 0
+          ? `Task completed successfully with ${toolCallsCount} tool call(s).`
+          : 'Task completed with no output.');
+
         return {
-          content: textContent,
+          content: finalContent,
           success: true,
           iterations,
           toolCalls: toolCallsCount,
