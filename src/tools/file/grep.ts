@@ -168,12 +168,12 @@ async function exactSearch(query: string, searchPath: string, maxResults: number
               }
               regex.lastIndex = 0;
             }
-          } catch (error) {
+          } catch {
             // 跳过无法读取的文件
           }
         }
       }
-    } catch (error) {
+    } catch {
       // 跳过无法访问的目录
     }
   }

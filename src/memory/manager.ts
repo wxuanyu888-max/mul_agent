@@ -10,7 +10,6 @@ import fsSync from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { watch } from 'node:fs';
-import type { DatabaseSync } from 'node:sqlite';
 
 import type {
   MemorySearchManager,
@@ -35,9 +34,6 @@ import {
   type HybridKeywordResult,
 } from './hybrid.js';
 import { isParsableFile, parseDocument } from './parser.js';
-
-const DEFAULT_AGENT_ID = 'core_brain';
-const STORAGE_DIR = 'storage/memory';
 
 // Chunking configuration
 const CHUNK_MAX_CHARS = 1000;
@@ -466,7 +462,7 @@ export class MemoryIndexManager implements MemorySearchManager {
    */
   private chunkContent(
     content: string,
-    source: MemorySource
+    _source: MemorySource
   ): Array<{
     id: string;
     content: string;

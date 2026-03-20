@@ -14,12 +14,12 @@
  * 3. manual compact: 手动调用 compact 工具触发同样的摘要机制
  */
 
-import { getLLMClient, type LLMMessage, type LLMRequest, type LLMResponse } from './llm.js';
+import { getLLMClient, type LLMRequest, type LLMResponse } from './llm.js';
 import { buildSystemPrompt, type BuildContext, type ToolInfo, type SkillInfo } from './prompt/index.js';
 import { createDefaultTools, createLoadTool, syncWorkspaceToMemory } from '../tools/index.js';
-import type { Message, ToolResult as AgentToolResult, LoadedItem, LLMMessage as AILoopLLMMessage } from './types.js';
+import type { Message, ToolResult as AgentToolResult, LoadedItem } from './types.js';
 import { toLLMMessages } from './types.js';
-import { errorResult, type JsonToolResult, type ToolResult } from '../tools/types.js';
+import { type JsonToolResult, type ToolResult } from '../tools/types.js';
 import {
   microCompact,
   autoCompact,
@@ -30,7 +30,7 @@ import {
   type CompactionContext,
   type CompactionConfig,
 } from './compaction.js';
-import { getBackgroundManager, type BackgroundNotification } from './background.js';
+import { getBackgroundManager } from './background.js';
 import { loadSkillsFromDir, getUserInvocableSkills, type SkillEntry } from '../skills/index.js';
 import { getEnabledSkills } from '../skills/manager.js';
 import path from 'node:path';
@@ -288,7 +288,7 @@ export class AgentLoop {
   private async buildPrompt(): Promise<string> {
     // 将工具转换为 ToolInfo 格式
     const toolInfos: ToolInfo[] = [];
-    for (const [name, tool] of this.tools) {
+    for (const [_name, tool] of this.tools) {
       toolInfos.push({
         name: tool.name,
         description: tool.description,
@@ -616,7 +616,7 @@ export class AgentLoop {
   private getToolDefinitions(): LLMRequest['tools'] {
     const tools: LLMRequest['tools'] = [];
 
-    for (const [name, tool] of this.tools) {
+    for (const [_name, tool] of this.tools) {
       tools.push({
         name: tool.name,
         description: tool.description,

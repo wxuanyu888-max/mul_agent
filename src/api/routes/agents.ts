@@ -64,7 +64,7 @@ export function createAgentsRouter(): Router {
   // PUT /agents/:agent_id/config
   router.put('/agents/:agent_id/config', (req: Request, res: Response) => {
     const agent_id = req.params.agent_id as string;
-    const { config_type, content, metadata } = req.body;
+    const { config_type, content, metadata: _metadata } = req.body;
 
     if (!agentsStore[agent_id]) {
       agentsStore[agent_id] = {};

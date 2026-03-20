@@ -1,37 +1,7 @@
 // Memory Write 工具
 import { jsonResult, errorResult } from "../types.js";
-import { getMemoryIndexManager } from "../../memory/manager.js";
-import type { MemorySearchConfig } from "../../memory/types.js";
 import fs from "node:fs/promises";
 import path from "node:path";
-
-/**
- * 默认的 Memory 配置
- */
-const DEFAULT_CONFIG: MemorySearchConfig = {
-  enabled: true,
-  provider: 'auto',
-  model: 'BAAI/bge-small-zh-v1.5',
-  fallback: 'none',
-  vector: {
-    enabled: true,
-  },
-  fts: {
-    enabled: true,
-  },
-  sources: ['memory', 'sessions'],
-};
-
-/**
- * 获取或创建 MemoryIndexManager
- */
-async function getManager(agentId: string, workspaceDir: string) {
-  return getMemoryIndexManager({
-    agentId,
-    workspaceDir,
-    config: DEFAULT_CONFIG,
-  });
-}
 
 export function createMemoryWriteTool() {
   return {
@@ -49,7 +19,7 @@ export function createMemoryWriteTool() {
     },
     execute: async (_toolCallId: string, params: { content: string; path?: string; agentId?: string }) => {
       try {
-        const { content, path: filePath, agentId = "core_brain" } = params;
+        const { content, path: filePath, agentId: _agentId = "core_brain" } = params;
         const workspaceDir = process.cwd();
 
         // 默认保存到 storage/memory/ 目录

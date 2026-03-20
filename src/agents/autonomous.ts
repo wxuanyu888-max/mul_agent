@@ -8,9 +8,9 @@
  * 4. 身份重注入（上下文压缩后）
  */
 
-import { createAgentLoop, type AgentLoop } from './loop.js';
+import { createAgentLoop } from './loop.js';
 import { getTaskManager, type Task } from '../tools/tasks/manager.js';
-import { jsonResult, errorResult, type ToolResult } from '../tools/types.js';
+import { jsonResult, errorResult } from '../tools/types.js';
 import type { Message } from './types.js';
 
 /**

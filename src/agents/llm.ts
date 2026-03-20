@@ -144,7 +144,7 @@ export class LLMClient {
 
     // 内容预览
     const textBlock = data.content?.find((b) => b.type === 'text');
-    const responseText = textBlock?.text || '';
+    void textBlock; // 保留用于未来扩展
 
     // 记录到 storage/llm_logs/ (使用统一日志系统 - 包含完整输入输出)
     await logLlmCall({

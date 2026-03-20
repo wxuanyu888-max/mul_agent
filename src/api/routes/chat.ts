@@ -4,7 +4,6 @@
 
 import { Router, Request, Response } from 'express';
 import { messageQueue } from '../../message/index.js';
-import { chatWithContext } from '../../agents/llm.js';
 import { AgentLoop } from '../../agents/loop.js';
 import type { Message, SessionMessage } from '../../agents/types.js';
 import { querySessions, getSession, deleteSession } from '../../session/manager.js';
@@ -58,7 +57,7 @@ export function createChatRouter(): Router {
 
   // POST /chat - 加入消息队列
   router.post('/chat', (req: Request, res: Response) => {
-    const { message, agent_id, conversation_id } = req.body;
+    const { message, agent_id: _agent_id, conversation_id } = req.body;
 
     if (!message) {
       res.status(400).json({ error: 'Message is required' });
@@ -250,7 +249,7 @@ export function createChatRouter(): Router {
 
   // SSE Stream endpoint for real-time chat
   router.post('/chat/stream', async (req: Request, res: Response) => {
-    const { message, agent_id, conversation_id } = req.body;
+    const { message, agent_id: _agent_id, conversation_id } = req.body;
 
     if (!message) {
       res.status(400).json({ error: 'Message is required' });
@@ -294,19 +293,19 @@ export function createChatRouter(): Router {
         promptMode: 'full',
 
         // 回调：工具确认（自动确认执行）
-        onToolConfirm: async (tool) => {
+        onToolConfirm: async (_tool) => {
           return true;
         },
 
         // 回调：工具执行（工具结果已包含在消息历史中，无需单独发给前端）
 
         // 回调：LLM 调用
-        onLlmCall: (messages, systemPrompt) => {
+        onLlmCall: (_messages, _systemPrompt) => {
           // 可用于调试
         },
 
         // 回调：LLM 响应
-        onLlmResponse: (response) => {
+        onLlmResponse: (_response) => {
           res.write(`data: ${JSON.stringify({ type: 'status', message: 'LLM 响应中...' })}\n\n`);
         },
       });

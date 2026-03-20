@@ -7,8 +7,6 @@
 import { callGateway } from './gateway.js';
 import type {
   AgentRunConfig,
-  AgentRunResult,
-  Message,
   ReplyPayload,
   QueueSettings,
   FollowupRun,
@@ -63,11 +61,11 @@ export class AgentRunner {
       channel = 'web',
       lane = 'default',
       isHeartbeat = false,
-      shouldSteer = false,
-      shouldFollowup = false,
-      isStreaming = false,
+      shouldSteer: _shouldSteer = false,
+      shouldFollowup: _shouldFollowup = false,
+      isStreaming: _isStreaming = false,
       extraSystemPrompt = '',
-      queueSettings,
+      queueSettings: _queueSettings,
     } = params;
 
     // 构建运行配置
@@ -82,12 +80,13 @@ export class AgentRunner {
       timeoutMs: this.options.defaultTimeout,
     };
 
-    // 创建 FollowupRun 对象
+    // 创建 FollowupRun 对象（保留用于未来扩展）
     const followupRun: FollowupRun = {
       runId: generateId(),
       prompt: commandBody,
       config: runConfig,
     };
+    void followupRun; // 保留用于未来扩展
 
     // 如果是心跳且没有需要处理的内容，快速返回
     if (isHeartbeat && !this.requiresAttention(commandBody)) {

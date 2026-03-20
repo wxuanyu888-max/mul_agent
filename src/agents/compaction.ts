@@ -148,7 +148,7 @@ export function microCompact(
 /**
  * 从消息中提取工具名称
  */
-function extractToolName(messages: Message[], msgIndex: number, partIndex: number): string | undefined {
+function extractToolName(messages: Message[], msgIndex: number, _partIndex: number): string | undefined {
   // 向前查找最近的 assistant 消息中的 tool_calls
   for (let i = msgIndex - 1; i >= 0; i--) {
     const msg = messages[i];

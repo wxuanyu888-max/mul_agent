@@ -53,7 +53,7 @@ export class HookExecutor {
   /**
    * 创建带上下文的执行器
    */
-  withContext(context: Partial<HookContext>): HookExecutor {
+  withContext(_context: Partial<HookContext>): HookExecutor {
     return new HookExecutor({
       registry: this.registry,
       continueOnError: this.continueOnError,

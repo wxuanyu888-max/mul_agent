@@ -69,7 +69,7 @@ app.delete('/api/llm-config', (req, res) => {
 });
 
 // Error handling
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Error:', err.message);
   res.status(500).json({ error: 'Internal server error' });
 });

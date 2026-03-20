@@ -117,7 +117,7 @@ async function listDirectory(
 
     const key = prefix || dirPath;
     results[key] = files;
-  } catch (error) {
+  } catch {
     // 目录无法访问
   }
 }

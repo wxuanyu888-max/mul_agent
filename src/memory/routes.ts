@@ -7,10 +7,9 @@
 import { type Request, type Response, Router } from 'express';
 import {
   type WriteMemoryRequest,
-  type SearchMemoryRequest,
   type MemorySearchConfig,
 } from './types.js';
-import { getMemoryIndexManager, MemoryIndexManager } from './manager.js';
+import { getMemoryIndexManager } from './manager.js';
 
 const DEFAULT_AGENT_ID = 'core_brain';
 const DEFAULT_WORKSPACE_DIR = 'storage/memory';

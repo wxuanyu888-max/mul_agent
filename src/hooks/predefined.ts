@@ -1,5 +1,5 @@
 // 预定义的 Hook Handlers
-import type { HookEvent, HookEventType, HookHandler, HookOptions } from "./types.js";
+import type { HookEvent, HookEventType, HookHandler } from "./types.js";
 
 /**
  * 创建一个带优先级的hook handler

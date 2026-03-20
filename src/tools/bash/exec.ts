@@ -1,8 +1,8 @@
 // Bash 执行工具 - exec
 import { exec as execAsync } from 'node:child_process';
 import { promisify } from 'node:util';
-import { errorResult, jsonResult } from '../types.js';
-import { initTmuxSession } from './tmux.js';
+import { jsonResult } from '../types.js';
+import { initTmuxSession, tmuxExec } from './tmux.js';
 
 const execPromise = promisify(execAsync);
 

@@ -20,28 +20,6 @@ import type { LoadedItem } from '../types.js';
 const PROMPTS_DIR = join(process.cwd(), 'storage/prompts');
 
 /**
- * 提示词模块
- */
-interface PromptModule {
-  base: string;
-  safety: string;
-  tool_call_style: string;
-  skills: string;
-  memory: string;
-  workspace: string;
-  heartbeats: string;
-  runtime: string;
-  documentation: string;
-  model_aliases: string;
-  sandbox: string;
-  reply_tags: string;
-  messaging: string;
-  silent_replies: string;
-  reactions: string;
-  reasoning_format: string;
-}
-
-/**
  * 加载提示词模板
  */
 function loadTemplate(mode: 'full' | 'minimal' | 'none'): string {
@@ -146,7 +124,7 @@ For more information, consult the documentation.`,
  * 构建完整提示词
  */
 export function buildSystemPrompt(context: BuildContext): string {
-  const { config, tools, skills, runtime, context: ctx, loadedItems, isReviewRound } = context;
+  const { config, tools, skills: _skills, runtime: _runtime, context: _ctx, loadedItems, isReviewRound } = context;
   const mode = config.promptMode ?? 'full';
 
   // 加载模板

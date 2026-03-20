@@ -5,9 +5,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  type LogLevel,
-  type LogFilter,
-  type LogQueryOptions,
 } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);

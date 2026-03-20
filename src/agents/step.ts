@@ -5,7 +5,6 @@
  */
 
 import { callGateway } from './gateway.js';
-import type { Message } from './types.js';
 
 /**
  * Agent 步骤参数

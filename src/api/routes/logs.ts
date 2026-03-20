@@ -80,7 +80,7 @@ export function createLogsRouter(): Router {
       }
 
       res.json(stats);
-    } catch (error) {
+    } catch {
       res.json({
         total: 0,
         by_level: {},
@@ -118,7 +118,7 @@ export function createLogsRouter(): Router {
       }
 
       res.json({ files });
-    } catch (error) {
+    } catch {
       res.json({ files: [] });
     }
   });

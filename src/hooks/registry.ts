@@ -77,10 +77,10 @@ export const globalHookRegistry = new HookRegistry();
 /**
  * 便捷装饰器 - 注册钩子
  */
-export function hook(event: HookEventType, priority?: number) {
+export function hook(_event: HookEventType, _priority?: number) {
   return function (
-    target: unknown,
-    propertyKey: string,
+    _target: unknown,
+    _propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
     const originalMethod = descriptor.value;

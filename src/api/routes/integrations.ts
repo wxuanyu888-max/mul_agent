@@ -138,7 +138,7 @@ export function createIntegrationsRouter(): Router {
 
   // PUT /integrations/reorder
   router.put('/integrations/reorder', (req: Request, res: Response) => {
-    const { integrations } = req.body;
+    const { integrations: _integrations } = req.body;
 
     // Just acknowledge the reorder request
     res.json({ status: 'success', message: 'Integrations reordered' });

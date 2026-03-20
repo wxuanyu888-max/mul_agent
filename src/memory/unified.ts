@@ -8,7 +8,7 @@
  * 4. Workspace - 工作文件（Agent 主动读取）
  */
 
-import { getSession, addMessage } from '../session/index.js';
+import { getSession } from '../session/index.js';
 import { MemoryIndexManager, getMemoryIndexManager } from './manager.js';
 import type { MemorySearchConfig, MemorySearchResult } from './types.js';
 
@@ -346,7 +346,7 @@ export class UnifiedMemoryManager {
 
         files.push(path.join(directory, entry.name));
       }
-    } catch (_error) {
+    } catch {
       // 目录不存在，忽略
     }
 

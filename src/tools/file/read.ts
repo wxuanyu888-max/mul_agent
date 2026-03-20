@@ -1,6 +1,5 @@
 // 文件读取工具
 import fs from 'node:fs/promises';
-import path from 'node:path';
 import { errorResult, jsonResult } from '../types.js';
 
 export interface ReadFileParams {

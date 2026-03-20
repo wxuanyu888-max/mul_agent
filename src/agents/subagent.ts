@@ -7,7 +7,7 @@
  * 3. 子智能体运行完成后只返回摘要文本给父智能体
  */
 
-import { createAgentLoop, type AgentLoop, type AgentLoopConfig, type AgentLoopResult } from './loop.js';
+import { createAgentLoop, type AgentLoop, type AgentLoopConfig } from './loop.js';
 import { createDefaultTools } from '../tools/index.js';
 import { isTaskTool, type TaskTool } from '../tools/task.js';
 
