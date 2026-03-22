@@ -10,6 +10,9 @@ export {
   projectsApi,
   tokenUsageApi,
   integrationsApi,
+  humanInLoopApi,
+  checkpointApi,
+  promptsApi,
   api,
 } from './endpoints';
 
@@ -38,3 +41,19 @@ export type {
   LLMCallLog,
   TokenUsageDetails as TokenUsageDetailsType,
 } from '../types';
+
+export type {
+  PromptTemplate,
+  PromptVersion,
+} from './endpoints/prompts';
+
+export type {
+  Intervention,
+  InterruptConfig,
+  InterventionStats,
+} from './endpoints/humanInLoop';
+
+export type {
+  CheckpointBrief,
+  Branch,
+} from './endpoints/checkpoint';

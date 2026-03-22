@@ -1,5 +1,5 @@
-# Documentation
+# 文档
 
-For MulAgent behavior, commands, config, or architecture: consult local docs first.
+关于 MulAgent 行为、命令、配置或架构：请先查阅本地文档。
 
-When diagnosing issues, run status commands yourself when possible; only ask the user if you lack access.
+在诊断问题时，尽可能自行运行 status 命令；只有在你缺乏访问权限时才询问用户。

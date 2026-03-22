@@ -1,6 +1,6 @@
 // Bash 工具测试
 import { describe, it, expect } from "vitest";
-import { createExecTool, createProcessTool } from "../../../src/tools/bash/index.js";
+import { createExecTool, createProcessTool } from "../../../../src/tools/bash/index.js";
 
 describe("Tools - Bash", () => {
   describe("createExecTool", () => {

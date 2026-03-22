@@ -7,6 +7,7 @@
 import { Router, Request, Response } from 'express';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { getTasksPath } from '../../utils/path.js';
 
 type TaskStatus = 'pending' | 'in_progress' | 'completed';
 
@@ -24,7 +25,7 @@ interface Task {
 }
 
 // Tasks storage directory (same as TaskManager)
-const TASKS_DIR = path.join(process.cwd(), 'storage', 'tasks');
+const TASKS_DIR = getTasksPath();
 
 export function createTasksRouter(): Router {
   const router = Router();

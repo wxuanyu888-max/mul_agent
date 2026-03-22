@@ -36,7 +36,7 @@
     "skills/"
   ],
   "scripts": {
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && cd ui && vite build",
     "dev": "cd ui && pnpm dev",
     "api": "npx tsx src/api/server.ts",
     "api:dev": "tsx src/api/server.ts",
@@ -64,6 +64,7 @@
     "oxfmt": "latest",
     "oxlint": "latest",
     "pdf-parse": "^2.4.5",
+    "playwright": "^1.58.2",
     "supertest": "^7.2.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
@@ -73,6 +74,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "cors": "^2.8.5",
+    "edge-tts": "^1.0.1",
     "express": "^4.21.0"
   },
   "engines": {

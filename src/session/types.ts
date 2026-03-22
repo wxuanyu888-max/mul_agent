@@ -93,6 +93,7 @@ export interface TokenUsage {
  * Session 创建选项
  */
 export interface CreateSessionOptions {
+  id?: string;       // 可选的 session ID，如果不提供则自动生成
   label?: string;
   parentId?: string;
   config?: SessionConfig;

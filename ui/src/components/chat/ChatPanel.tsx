@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, User, Bot, Loader2, RefreshCw, Trash2, Menu, MessageSquare, ChevronRight, ChevronDown, CheckCircle, AlertCircle, Play, Brain, Activity, Clock } from 'lucide-react';
+import { Send, User, Bot, Loader2, RefreshCw, Trash2, Menu, MessageSquare, ChevronRight, ChevronDown, CheckCircle, AlertCircle, Play, Brain, Activity, Clock, Mic, MicOff } from 'lucide-react';
 import { chatApi, infoApi } from '../../services/api';
+
+// Web Speech API 类型声明
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 import { AgentStatePanel } from './AgentStatePanel';
 import { CommandAutocomplete, CommandSuggestion } from './CommandAutocomplete';
 import { SessionList } from './SessionList';
@@ -18,6 +26,7 @@ interface ExecutionStep {
   details?: any;
   timestamp: number;
   expanded?: boolean;
+  duration?: number; // 用时（毫秒）
 }
 
 // Available commands (should match backend commands)
@@ -170,10 +179,24 @@ function ExecutionStepItem({ step }: { step: ExecutionStep }) {
             </p>
           )}
 
-          {/* Timestamp */}
-          <span className="text-xs text-gray-400 block mt-1">
-            {new Date(step.timestamp).toLocaleTimeString()}
-          </span>
+          {/* Timestamp and Duration */}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-gray-400">
+              {new Date(step.timestamp).toLocaleTimeString()}
+            </span>
+            {step.duration !== undefined && step.status === 'completed' && (
+              <span className="text-xs text-green-600 font-medium">
+                {step.duration < 1000
+                  ? `${step.duration}ms`
+                  : `${(step.duration / 1000).toFixed(1)}s`}
+              </span>
+            )}
+            {step.status === 'running' && (
+              <span className="text-xs text-blue-500">
+                运行中...
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Expand indicator */}
@@ -216,7 +239,6 @@ export function ChatPanel() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<string>(savedAgent || '');
   const [currentSessionId, setCurrentSessionId] = useState<string>(savedSessionId || '');
@@ -225,6 +247,14 @@ export function ChatPanel() {
   const [hasSuggestions, setHasSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 语音识别状态
+  const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const recognitionRef = useRef<any>(null);
+
+  // 跟踪每个步骤的开始时间
+  const stepStartTimes = useRef<Map<string, number>>(new Map());
 
   // Execution steps for displaying agent actions (like Claude's thought process)
   const [executionSteps, setExecutionSteps] = useState<ExecutionStep[]>([]);
@@ -297,8 +327,10 @@ export function ChatPanel() {
     try {
       const res = await chatApi.getSessionMessages(sessionId, selectedAgent);
       const messages = res.data.messages || [];
+      // Filter out tool messages - only show user and assistant messages
+      const filteredMessages = messages.filter((msg) => msg.role === 'user' || msg.role === 'assistant');
       setMessages(
-        messages.map((msg) => ({
+        filteredMessages.map((msg) => ({
           role: msg.role === 'user' ? 'user' : 'assistant',
           content: msg.content,
           // Use timestamp from backend if available, otherwise use current time
@@ -323,19 +355,26 @@ export function ChatPanel() {
     setShowSessionList(false);
   };
 
+  // 跟踪进行中的请求
+  const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set());
+
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim()) return;
+
+    const messageContent = input.trim();
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     const userMessage: Message = {
       role: 'user',
-      content: input.trim(),
+      content: messageContent,
       timestamp: Date.now(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
-    setLoading(true);
+    setPendingRequests((prev) => new Set(prev).add(requestId));
     setExecutionSteps([]); // Clear previous execution steps
+    stepStartTimes.current.clear(); // Clear step timing
 
     try {
       // Use streaming API to get real-time agent execution updates
@@ -381,18 +420,23 @@ export function ChatPanel() {
                   setExecutionSteps((prev) => {
                     const lastStep = prev[prev.length - 1];
                     if (lastStep && lastStep.type === 'status' && lastStep.status === 'running') {
+                      // 计算用时
+                      const startTime = stepStartTimes.current.get(lastStep.id) || lastStep.timestamp;
+                      const duration = Date.now() - startTime;
                       // Update existing status step
                       return prev.map((step, i) =>
                         i === prev.length - 1
-                          ? { ...step, title: event.message, status: 'completed' }
+                          ? { ...step, title: event.message, status: 'completed', duration }
                           : step
                       );
                     }
                     // Add new status step
+                    const stepId = `status-${Date.now()}`;
+                    stepStartTimes.current.set(stepId, Date.now());
                     return [
                       ...prev,
                       {
-                        id: `status-${Date.now()}`,
+                        id: stepId,
                         type: 'status',
                         status: 'running',
                         title: event.message,
@@ -440,17 +484,22 @@ export function ChatPanel() {
                         (s) => s.type === 'tool' && s.status === 'running'
                       );
                       if (existingToolStep) {
+                        // 计算用时
+                        const startTime = stepStartTimes.current.get(existingToolStep.id) || existingToolStep.timestamp;
+                        const duration = Date.now() - startTime;
                         return prev.map((step) =>
                           step.id === existingToolStep.id
-                            ? { ...step, title: `执行 ${state.route}`, details: state.details }
+                            ? { ...step, title: `执行 ${state.route}`, details: state.details, status: 'completed', duration }
                             : step
                         );
                       }
                       // Add new tool execution step
+                      const stepId = `tool-${Date.now()}`;
+                      stepStartTimes.current.set(stepId, Date.now());
                       return [
                         ...prev,
                         {
-                          id: `tool-${Date.now()}`,
+                          id: stepId,
                           type: 'tool',
                           status: 'running',
                           title: `执行 ${state.route}`,
@@ -466,9 +515,12 @@ export function ChatPanel() {
                     setExecutionSteps((prev) => {
                       const lastStep = prev[prev.length - 1];
                       if (lastStep && lastStep.type === 'status') {
+                        // 计算用时
+                        const startTime = stepStartTimes.current.get(lastStep.id) || lastStep.timestamp;
+                        const duration = Date.now() - startTime;
                         return prev.map((step, i) =>
                           i === prev.length - 1
-                            ? { ...step, title: state.current_action, status: 'completed' }
+                            ? { ...step, title: state.current_action, status: 'completed', duration }
                             : step
                         );
                       }
@@ -499,14 +551,21 @@ export function ChatPanel() {
                   break;
 
                 case 'complete':
-                  // Execution completed
-                  setExecutionSteps((prev) =>
-                    prev.map((step, i) =>
-                      i === prev.length - 1 && step.status === 'running'
-                        ? { ...step, status: 'completed' }
-                        : step
-                    )
-                  );
+                  // Execution completed - 计算最后一个运行中步骤的用时
+                  setExecutionSteps((prev) => {
+                    const runningIndex = prev.findIndex(s => s.status === 'running');
+                    if (runningIndex !== -1) {
+                      const step = prev[runningIndex];
+                      const startTime = stepStartTimes.current.get(step.id) || step.timestamp;
+                      const duration = Date.now() - startTime;
+                      return prev.map((s, i) =>
+                        i === runningIndex
+                          ? { ...s, status: 'completed', duration }
+                          : s
+                      );
+                    }
+                    return prev;
+                  });
                   break;
               }
             } catch (e) {
@@ -518,9 +577,39 @@ export function ChatPanel() {
 
       // Add assistant response to messages
       if (finalResponse) {
+        // Check if response contains tool_calls JSON
+        let displayContent = finalResponse;
+        try {
+          const parsed = JSON.parse(finalResponse);
+          if (parsed.tool_calls && Array.isArray(parsed.tool_calls)) {
+            // Response contains tool_calls - don't display the raw JSON
+            // Instead, add tool execution steps
+            for (const tc of parsed.tool_calls) {
+              const toolName = tc.name || tc.function?.name || 'unknown';
+              const toolInput = tc.input || tc.function?.arguments || {};
+              const toolId = tc.id || `tool-${Date.now()}`;
+              setExecutionSteps((prev) => [
+                ...prev,
+                {
+                  id: toolId,
+                  type: 'tool',
+                  status: 'completed',
+                  title: `Tool: ${toolName}`,
+                  description: typeof toolInput === 'string' ? toolInput : JSON.stringify(toolInput).slice(0, 200),
+                  timestamp: Date.now(),
+                },
+              ]);
+            }
+            // Don't show the raw JSON in the chat
+            displayContent = '[Tool calls executed]';
+          }
+        } catch {
+          // Not JSON, display as-is
+        }
+
         const assistantMessage: Message = {
           role: 'assistant',
-          content: finalResponse,
+          content: displayContent,
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, assistantMessage]);
@@ -539,7 +628,12 @@ export function ChatPanel() {
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
-      setLoading(false);
+      // 移除请求追踪
+      setPendingRequests((prev) => {
+        const next = new Set(prev);
+        next.delete(requestId);
+        return next;
+      });
     }
   };
 
@@ -632,6 +726,79 @@ export function ChatPanel() {
 
   const clearChat = () => {
     setMessages([]);
+  };
+
+  // 语音识别功能
+  const toggleVoiceRecording = () => {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionAPI) {
+      alert('您的浏览器不支持语音识别功能，请使用 Chrome、Edge 或 Safari 浏览器');
+      return;
+    }
+
+    // 如果正在聆听，点击停止
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      return;
+    }
+
+    // 开始新的识别
+    const recognition = new SpeechRecognitionAPI();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'zh-CN';
+
+    let finalTranscript = ''; // 用于在停止时保存最终结果
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setInterimTranscript('');
+      finalTranscript = '';
+    };
+
+    recognition.onresult = (event: any) => {
+      const results = Array.from(event.results);
+      const transcript = results
+        .map((result: any) => result[0].transcript)
+        .join('');
+      console.log('[Voice] 识别到文字:', transcript, '| 字符数:', transcript.length);
+      setInterimTranscript(transcript);
+
+      // 检查是否是最终结果
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const finalResult = (results as any[]).find((r: any) => r.isFinal);
+      if (finalResult) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        finalTranscript = finalResult[0].transcript as string;
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('[Voice] Recognition error:', event.error);
+      setIsListening(false);
+      setInterimTranscript('');
+      recognitionRef.current = null;
+    };
+
+    recognition.onend = () => {
+      console.log('[Voice] Recognition ended');
+      // 点击停止后，将识别结果转入输入框，不自动发送
+      if (finalTranscript) {
+        setInput(finalTranscript);
+      } else if (interimTranscript) {
+        // 如果没有最终结果但有临时结果，也保留
+        setInput(interimTranscript);
+      }
+      setIsListening(false);
+      setInterimTranscript('');
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
   };
 
   return (
@@ -773,7 +940,7 @@ export function ChatPanel() {
             })}
 
             {/* Execution Steps Display (like Claude's thought process) */}
-            {loading && executionSteps.length > 0 && (
+            {pendingRequests.size > 0 && executionSteps.length > 0 && (
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center flex-shrink-0">
                   <Bot className="w-4 h-4 text-purple-600" />
@@ -809,7 +976,7 @@ export function ChatPanel() {
               </div>
             )}
 
-            {loading && executionSteps.length === 0 && (
+            {pendingRequests.size > 0 && executionSteps.length === 0 && (
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center">
                   <Bot className="w-4 h-4 text-purple-600" />
@@ -834,17 +1001,46 @@ export function ChatPanel() {
       {/* Input */}
       <div className="px-6 py-4 border-t border-gray-200 bg-white">
         <div className="flex items-end gap-3">
+          {/* Voice Input Button */}
+          <button
+            onClick={toggleVoiceRecording}
+            className={`p-3 rounded-xl transition-all flex-shrink-0 ${
+              isListening
+                ? 'bg-red-100 text-red-600 animate-pulse'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+            }`}
+            title={isListening ? '停止聆听' : '开始语音输入'}
+          >
+            {isListening ? (
+              <MicOff className="w-5 h-5" />
+            ) : (
+              <Mic className="w-5 h-5" />
+            )}
+          </button>
+
+          {/* Input Area */}
           <div className="flex-1 relative">
+            {/* 语音聆听模式：输入框显示实时转录结果，可编辑 */}
+            {isListening && (
+              <div className="absolute left-0 top-0 z-10 flex items-center gap-2 w-full bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 pointer-events-none"
+                style={{ opacity: 0.9 }}>
+                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                <span className="text-red-600 font-bold text-sm flex-shrink-0">🎙️ 正在聆听</span>
+                <span className="text-red-500 text-xs">
+                  {interimTranscript ? `已识别 ${interimTranscript.length} 字` : '等待声音...'}
+                </span>
+              </div>
+            )}
             <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleInputKeyDown}
-              placeholder="Type your message... (try /help, /status, /list)"
+              value={isListening ? interimTranscript : input}
+              onChange={(e) => isListening ? setInterimTranscript(e.target.value) : setInput(e.target.value)}
+              onKeyDown={isListening ? undefined : handleInputKeyDown}
+              placeholder={isListening ? "正在识别..." : "Type your message... (try /help, /status, /list)"}
               rows={1}
-              className="w-full resize-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-700 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent max-h-32"
+              className={`w-full resize-none bg-gray-50 border rounded-xl px-4 py-3 text-gray-700 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent max-h-32 ${isListening ? 'border-red-200 bg-red-50/50' : 'border-gray-200'}`}
               style={{ minHeight: '44px' }}
             />
-            {showAutocomplete && (
+            {!isListening && showAutocomplete && (
               <CommandAutocomplete
                 input={input}
                 onSelect={handleCommandSelect}
@@ -855,12 +1051,14 @@ export function ChatPanel() {
               />
             )}
           </div>
+
+          {/* Send Button */}
           <button
             onClick={sendMessage}
-            disabled={!input.trim() || loading}
+            disabled={!input.trim() && !isListening}
             className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl font-medium text-sm transition-all disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {loading ? (
+            {pendingRequests.size > 0 ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Send className="w-4 h-4" />

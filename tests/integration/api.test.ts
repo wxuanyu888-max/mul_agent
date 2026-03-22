@@ -6,6 +6,7 @@ import { createInfoRouter } from '../../src/api/routes/info.js';
 import { createAgentsRouter } from '../../src/api/routes/agents.js';
 import { createMemoryRouter } from '../../src/api/routes/memory.js';
 import { createProjectsRouter } from '../../src/api/routes/projects.js';
+import { createChatRouter } from '../../src/api/routes/chat.js';
 
 describe("API Integration Tests", () => {
   let app: Express;
@@ -19,6 +20,7 @@ describe("API Integration Tests", () => {
     app.use('/api/v1', createAgentsRouter());
     app.use('/api/v1', createMemoryRouter());
     app.use('/api/v1', createProjectsRouter());
+    app.use('/api/v1', createChatRouter());
   });
 
   describe("Health Check", () => {
@@ -135,10 +137,10 @@ describe("API Integration Tests", () => {
     });
   });
 
-  describe("GET /api/v1/thinking/modes", () => {
+  describe("GET /api/v1/info/thinking/modes", () => {
     it("should return thinking modes", async () => {
       const response = await request(app)
-        .get('/api/v1/thinking/modes')
+        .get('/api/v1/info/thinking/modes')
         .expect(200);
 
       expect(response.body).toHaveProperty('modes');
@@ -148,10 +150,10 @@ describe("API Integration Tests", () => {
     });
   });
 
-  describe("GET /api/v1/thoughts/:session_id", () => {
+  describe("GET /api/v1/info/thoughts/:session_id", () => {
     it("should return thoughts for session", async () => {
       const response = await request(app)
-        .get('/api/v1/thoughts/session-123')
+        .get('/api/v1/info/thoughts/session-123')
         .expect(200);
 
       expect(response.body).toHaveProperty('session_id');
@@ -161,10 +163,10 @@ describe("API Integration Tests", () => {
     });
   });
 
-  describe("POST /api/v1/thinking/config", () => {
+  describe("POST /api/v1/info/thinking/config", () => {
     it("should accept and echo config", async () => {
       const response = await request(app)
-        .post('/api/v1/thinking/config')
+        .post('/api/v1/info/thinking/config')
         .send({ mode: 'high', max_tokens: 1000 })
         .expect(200);
 
@@ -264,7 +266,7 @@ describe("API Integration Tests", () => {
   describe("Request Validation", () => {
     it("should handle JSON body correctly", async () => {
       const response = await request(app)
-        .post('/api/v1/thinking/config')
+        .post('/api/v1/info/thinking/config')
         .set('Content-Type', 'application/json')
         .send(JSON.stringify({ key: 'value' }))
         .expect(200);
@@ -274,10 +276,47 @@ describe("API Integration Tests", () => {
 
     it("should return 400 for invalid JSON", async () => {
       const response = await request(app)
-        .post('/api/v1/thinking/config')
+        .post('/api/v1/info/thinking/config')
         .set('Content-Type', 'application/json')
         .send('invalid json')
         .expect(400);
+    });
+  });
+
+  describe("GET /api/v1/chat/sessions", () => {
+    it("should return sessions list", async () => {
+      const response = await request(app)
+        .get('/api/v1/chat/sessions')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('sessions');
+      expect(Array.isArray(response.body.sessions)).toBe(true);
+    });
+
+    it("should return sessions with required fields", async () => {
+      const response = await request(app)
+        .get('/api/v1/chat/sessions')
+        .expect(200);
+
+      if (response.body.sessions.length > 0) {
+        const session = response.body.sessions[0];
+        expect(session).toHaveProperty('session_id');
+        expect(session).toHaveProperty('agent_id');
+        expect(session).toHaveProperty('created_at');
+        expect(session).toHaveProperty('last_message_at');
+      }
+    });
+  });
+
+  // Note: /chat/stream is tested via e2e tests since it requires LLM
+
+  describe("GET /api/v1/chat/session/:session_id", () => {
+    it("should return 404 for non-existent session", async () => {
+      const response = await request(app)
+        .get('/api/v1/chat/session/non-existent-session')
+        .expect(404);
+
+      expect(response.body).toHaveProperty('error');
     });
   });
 });

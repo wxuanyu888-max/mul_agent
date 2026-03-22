@@ -10,7 +10,6 @@ export function useAgent() {
     setAgents,
     setSelectedAgent,
     setLoading,
-    setError,
     fetchAgents,
   } = useAgentStore();
 

@@ -1,6 +1,15 @@
 // Memory 工具测试
-import { describe, it, expect } from "vitest";
-import { createMemorySearchTool, createMemoryGetTool } from "../../../src/tools/memory/index.js";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { createMemorySearchTool, createMemoryGetTool } from "../../../../src/tools/memory/index.js";
+
+// Mock fs/promises module
+vi.mock("node:fs/promises", () => ({
+  default: {
+    readFile: vi.fn().mockResolvedValue("mock file content"),
+    stat: vi.fn().mockResolvedValue({ mtimeMs: Date.now() }),
+    readdir: vi.fn().mockResolvedValue([]),
+  },
+}));
 
 describe("Tools - Memory", () => {
   describe("createMemorySearchTool", () => {

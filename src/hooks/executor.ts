@@ -61,9 +61,25 @@ export class HookExecutor {
   }
 }
 
-// 默认执行器
-export const defaultHookExecutor = new HookExecutor();
+// 延迟初始化默认执行器，确保 globalHookRegistry 已初始化
+let _defaultHookExecutor: HookExecutor | null = null;
+
+function getDefaultHookExecutor(): HookExecutor {
+  if (!_defaultHookExecutor) {
+    _defaultHookExecutor = new HookExecutor();
+  }
+  return _defaultHookExecutor;
+}
+
+export const defaultHookExecutor = {
+  get emit() {
+    return getDefaultHookExecutor().emit.bind(getDefaultHookExecutor());
+  },
+  get withContext() {
+    return getDefaultHookExecutor().withContext.bind(getDefaultHookExecutor());
+  },
+};
 
 // 便捷函数
 export const emit = (eventType: HookEventType, context?: Partial<HookContext>) =>
-  defaultHookExecutor.emit(eventType, context || {});
+  getDefaultHookExecutor().emit(eventType, context || {});

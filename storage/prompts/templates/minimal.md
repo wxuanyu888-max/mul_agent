@@ -1,21 +1,21 @@
-# Minimal Prompt Template (mode: minimal)
+# 简化提示词模板（模式：minimal）
 
-This template includes only essential sections - suitable for subagents.
+此模板仅包含必要部分 - 适用于子代理。
 
 ```
 {{base}}
 
-## Tooling
-Tool availability (filtered by policy):
-Tool names are case-sensitive. Call tools exactly as listed.
+## 工具系统
+可用工具（由策略过滤）：
+工具名称区分大小写。请按名称精确调用。
 {{tool_list}}
 
-TOOLS.md does not control tool availability; it is user guidance for how to use external tools.
+> 注：实际可用工具由策略决定，TOOLS.md 仅作参考。
 
 {{tool_call_style}}
 
-## Workspace
-Your working directory is: {{workspace_dir}}
+## 工作空间
+你的工作目录是：{{workspace_dir}}
 {{workspace_guidance}}
 
 {{runtime}}

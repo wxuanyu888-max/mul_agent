@@ -1,17 +1,21 @@
 import { lazy, Suspense } from 'react';
 import { useUIStore } from './stores';
-import { MessageSquare, Activity, FileText, Database, Bot, BarChart3, Key, Loader2, CheckSquare } from 'lucide-react';
+import { MessageSquare, Activity, FileText, Database, Bot, BarChart3, Key, Loader2, CheckSquare, FileCode, Users, History, Mic } from 'lucide-react';
 
 // Lazy load all panels except Chat (Chat stays always loaded for UX)
 const ChatPanel = lazy(() => import('./components/chat/ChatPanel').then(m => ({ default: m.ChatPanel })));
+const VoiceChat = lazy(() => import('./components/chat/VoiceChat').then(m => ({ default: m.default })));
 const WorkflowCanvas = lazy(() => import('./components/workflow/WorkflowCanvas').then(m => ({ default: m.WorkflowCanvas })));
 const LogViewer = lazy(() => import('./components/logs/LogViewer').then(m => ({ default: m.LogViewer })));
 const MemoryPanel = lazy(() => import('./components/memory/MemoryPanel').then(m => ({ default: m.MemoryPanel })));
 const TokenUsagePanel = lazy(() => import('./components/token/TokenUsagePanel').then(m => ({ default: m.default })));
 const IntegrationList = lazy(() => import('./components/settings/IntegrationList').then(m => ({ default: m.default })));
 const TaskPanel = lazy(() => import('./components/tasks').then(m => ({ default: m.TaskPanel })));
+const PromptVersionsPanel = lazy(() => import('./components/prompts/PromptVersionsPanel').then(m => ({ default: m.PromptVersionsPanel })));
+const HumanInLoopPanel = lazy(() => import('./components/human-in-loop/HumanInLoopPanel').then(m => ({ default: m.HumanInLoopPanel })));
+const CheckpointPanel = lazy(() => import('./components/checkpoint/CheckpointPanel').then(m => ({ default: m.CheckpointPanel })));
 
-type TabType = 'chat' | 'workflow' | 'tasks' | 'logs' | 'memory' | 'token' | 'keys';
+type TabType = 'chat' | 'voice' | 'workflow' | 'tasks' | 'logs' | 'memory' | 'token' | 'keys' | 'prompts' | 'humaninloop' | 'checkpoint';
 
 interface NavItem {
   id: TabType;
@@ -21,11 +25,15 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'chat', label: 'Chat', icon: MessageSquare },
+  { id: 'voice', label: 'Voice', icon: Mic },
   { id: 'workflow', label: 'Workflow', icon: Activity },
   { id: 'tasks', label: 'Tasks', icon: CheckSquare },
   { id: 'logs', label: 'Logs', icon: FileText },
   { id: 'memory', label: 'Memory', icon: Database },
   { id: 'token', label: 'Token', icon: BarChart3 },
+  { id: 'prompts', label: 'Prompts', icon: FileCode },
+  { id: 'humaninloop', label: 'Human', icon: Users },
+  { id: 'checkpoint', label: 'History', icon: History },
   { id: 'keys', label: 'Settings', icon: Key },
 ];
 
@@ -97,6 +105,13 @@ function App() {
             <ChatPanel />
           </div>
 
+          {/* Voice Chat */}
+          <div className={`h-full ${activeTab === 'voice' ? '' : 'hidden'}`}>
+            <Suspense fallback={<PanelLoader />}>
+              <VoiceChat />
+            </Suspense>
+          </div>
+
           {/* Lazy loaded panels */}
           <div className={`h-full ${activeTab === 'workflow' ? '' : 'hidden'}`}>
             <Suspense fallback={<PanelLoader />}>
@@ -126,6 +141,21 @@ function App() {
           <div className={`h-full ${activeTab === 'keys' ? '' : 'hidden'}`}>
             <Suspense fallback={<PanelLoader />}>
               <IntegrationList />
+            </Suspense>
+          </div>
+          <div className={`h-full ${activeTab === 'prompts' ? '' : 'hidden'}`}>
+            <Suspense fallback={<PanelLoader />}>
+              <PromptVersionsPanel />
+            </Suspense>
+          </div>
+          <div className={`h-full ${activeTab === 'humaninloop' ? '' : 'hidden'}`}>
+            <Suspense fallback={<PanelLoader />}>
+              <HumanInLoopPanel />
+            </Suspense>
+          </div>
+          <div className={`h-full ${activeTab === 'checkpoint' ? '' : 'hidden'}`}>
+            <Suspense fallback={<PanelLoader />}>
+              <CheckpointPanel sessionId="default" />
             </Suspense>
           </div>
         </div>

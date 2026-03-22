@@ -15,28 +15,91 @@ import {
   updateSessionStatus,
 } from "../../../src/session/manager.js";
 
-// Mock fs module
-vi.mock('node:fs/promises', () => ({
-  default: {
-    mkdir: vi.fn().mockResolvedValue(undefined),
-    readFile: vi.fn(),
-    writeFile: vi.fn().mockResolvedValue(undefined),
-    unlink: vi.fn().mockResolvedValue(undefined),
-  },
+// Store mock data for different scenarios
+let mockSessionData: Record<string, any> = {};
+let mockIndexData: Record<string, any> = {};
+
+// Mock file-lock module
+vi.mock('../../../src/utils/file-lock.js', () => ({
+  withFileLock: vi.fn().mockImplementation(async (filePath: string, fn: () => Promise<any>) => {
+    return fn();
+  }),
+  atomicReadJson: vi.fn().mockImplementation(async (filePath: string) => {
+    if (filePath.includes('.lock')) {
+      return null;
+    }
+    if (filePath.includes('index.json')) {
+      return mockIndexData;
+    }
+    // Session file - extract session ID from path
+    const match = filePath.match(/session[/-](.+?)\.json$/);
+    if (match) {
+      const sessionId = match[1];
+      return mockSessionData[sessionId] || null;
+    }
+    return null;
+  }),
+  atomicWriteJson: vi.fn().mockImplementation(async (filePath: string, data: any) => {
+    if (filePath.includes('index.json')) {
+      mockIndexData = data;
+    } else {
+      const match = filePath.match(/session[/-](.+?)\.json$/);
+      if (match) {
+        mockSessionData[match[1]] = data;
+      }
+    }
+    return;
+  }),
+  ensureDir: vi.fn().mockResolvedValue(undefined),
 }));
+
+// Mock fs module
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    default: {
+      ...actual,
+      mkdir: vi.fn().mockResolvedValue(undefined),
+      readFile: vi.fn().mockImplementation((path: string) => {
+        if (path.includes('.lock')) {
+          return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+        }
+        if (path.includes('index.json')) {
+          return Promise.resolve(JSON.stringify(mockIndexData));
+        }
+        return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+      }),
+      writeFile: vi.fn().mockImplementation((path: string, data: string) => {
+        if (path.includes('index.json')) {
+          mockIndexData = JSON.parse(data);
+        }
+        return Promise.resolve(undefined);
+      }),
+      unlink: vi.fn().mockImplementation((path: string) => {
+        if (path.includes('session-')) {
+          const match = path.match(/session[/-](.+?)\.json$/);
+          if (match) {
+            delete mockSessionData[match[1]];
+          }
+        }
+        return Promise.resolve(undefined);
+      }),
+      access: vi.fn().mockResolvedValue(undefined),
+    },
+  };
+});
 
 describe("Session Manager", () => {
   const testStorageDir = './storage/sessions';
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSessionData = {};
+    mockIndexData = {};
   });
 
   describe("createSession", () => {
     it("should create a new session with default config", async () => {
-      vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-
       const session = await createSession();
 
       expect(session.id).toBeDefined();
@@ -50,27 +113,18 @@ describe("Session Manager", () => {
     });
 
     it("should create session with custom label", async () => {
-      vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-
       const session = await createSession({ label: 'Test Session' });
 
       expect(session.label).toBe('Test Session');
     });
 
     it("should create session with parent ID", async () => {
-      vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-
       const session = await createSession({ parentId: 'parent-123' });
 
       expect(session.parentId).toBe('parent-123');
     });
 
     it("should create session with custom config", async () => {
-      vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-
       const session = await createSession({
         config: {
           runtime: 'worker',
@@ -96,7 +150,7 @@ describe("Session Manager", () => {
         toolCalls: [],
         usage: { input: 0, output: 0, total: 0 },
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockSession));
+      mockSessionData['test-123'] = mockSession;
 
       const session = await getSession('test-123');
 
@@ -104,8 +158,6 @@ describe("Session Manager", () => {
     });
 
     it("should return null when session not found", async () => {
-      vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
-
       const session = await getSession('nonexistent');
 
       expect(session).toBeNull();
@@ -123,8 +175,7 @@ describe("Session Manager", () => {
         usage: { input: 0, output: 0, total: 0 },
         updatedAt: 1000,
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockSession));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+      mockSessionData['test-123'] = mockSession;
 
       const updated = await updateSession('test-123', { label: 'Updated' });
 
@@ -133,8 +184,6 @@ describe("Session Manager", () => {
     });
 
     it("should return null for nonexistent session", async () => {
-      vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
-
       const updated = await updateSession('nonexistent', { label: 'Updated' });
 
       expect(updated).toBeNull();
@@ -151,8 +200,7 @@ describe("Session Manager", () => {
         usage: { input: 0, output: 0, total: 0 },
         updatedAt: 1000,
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockSession));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+      mockSessionData['test-123'] = mockSession;
 
       const message = { role: 'user' as const, content: 'Hello' };
       const updated = await addMessage('test-123', message);
@@ -173,8 +221,7 @@ describe("Session Manager", () => {
         usage: { input: 0, output: 0, total: 0 },
         updatedAt: 1000,
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockSession));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+      mockSessionData['test-123'] = mockSession;
 
       const toolCall = { id: 'tool-1', name: 'bash', input: { command: 'ls' } };
       const updated = await addToolCall('test-123', toolCall);
@@ -194,15 +241,12 @@ describe("Session Manager", () => {
         usage: { input: 100, output: 50, total: 150 },
         updatedAt: 1000,
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockSession));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+      mockSessionData['test-123'] = mockSession;
 
-      // Note: updateUsage in the manager actually replaces, not accumulates
       const updated = await updateSession('test-123', {
         usage: { input: 200, output: 100, total: 300 },
       });
 
-      // The implementation replaces usage, not accumulates
       expect(updated?.usage?.input).toBe(200);
       expect(updated?.usage?.output).toBe(100);
       expect(updated?.usage?.total).toBe(300);
@@ -211,12 +255,11 @@ describe("Session Manager", () => {
 
   describe("querySessions", () => {
     it("should return all sessions sorted by updatedAt", async () => {
-      const mockIndex = {
+      mockIndexData = {
         'session-1': { id: 'session-1', updatedAt: 100, status: 'active' },
         'session-2': { id: 'session-2', updatedAt: 200, status: 'active' },
         'session-3': { id: 'session-3', updatedAt: 50, status: 'completed' },
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockIndex));
 
       const sessions = await querySessions();
 
@@ -227,11 +270,10 @@ describe("Session Manager", () => {
     });
 
     it("should filter by status", async () => {
-      const mockIndex = {
+      mockIndexData = {
         'session-1': { id: 'session-1', updatedAt: 100, status: 'active' },
         'session-2': { id: 'session-2', updatedAt: 200, status: 'completed' },
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockIndex));
 
       const sessions = await querySessions({ status: 'active' });
 
@@ -240,11 +282,10 @@ describe("Session Manager", () => {
     });
 
     it("should filter by parentId", async () => {
-      const mockIndex = {
+      mockIndexData = {
         'session-1': { id: 'session-1', parentId: 'parent-1', status: 'active' },
         'session-2': { id: 'session-2', parentId: 'parent-2', status: 'active' },
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockIndex));
 
       const sessions = await querySessions({ parentId: 'parent-1' });
 
@@ -253,11 +294,10 @@ describe("Session Manager", () => {
     });
 
     it("should filter by label", async () => {
-      const mockIndex = {
+      mockIndexData = {
         'session-1': { id: 'session-1', label: 'My Test Session', status: 'active' },
         'session-2': { id: 'session-2', label: 'Another Session', status: 'active' },
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockIndex));
 
       const sessions = await querySessions({ label: 'Test' });
 
@@ -266,12 +306,11 @@ describe("Session Manager", () => {
     });
 
     it("should support pagination with offset and limit", async () => {
-      const mockIndex = {
+      mockIndexData = {
         'session-1': { id: 'session-1', updatedAt: 300, status: 'active' },
         'session-2': { id: 'session-2', updatedAt: 200, status: 'active' },
         'session-3': { id: 'session-3', updatedAt: 100, status: 'active' },
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockIndex));
 
       const sessions = await querySessions({ offset: 1, limit: 1 });
 
@@ -282,12 +321,11 @@ describe("Session Manager", () => {
 
   describe("getActiveSessions", () => {
     it("should return only active sessions", async () => {
-      const mockIndex = {
+      mockIndexData = {
         'session-1': { id: 'session-1', status: 'active' },
         'session-2': { id: 'session-2', status: 'completed' },
         'session-3': { id: 'session-3', status: 'active' },
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockIndex));
 
       const sessions = await getActiveSessions();
 
@@ -298,19 +336,15 @@ describe("Session Manager", () => {
 
   describe("deleteSession", () => {
     it("should delete session successfully", async () => {
-      vi.mocked(fs.unlink).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ 'other': { id: 'other' } }));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+      mockIndexData = { 'test-123': { id: 'test-123' }, 'other': { id: 'other' } };
+      mockSessionData['test-123'] = { id: 'test-123' };
 
       const result = await deleteSession('test-123');
 
       expect(result).toBe(true);
-      expect(fs.unlink).toHaveBeenCalled();
     });
 
     it("should return false when session not found", async () => {
-      vi.mocked(fs.unlink).mockRejectedValue(new Error('ENOENT'));
-
       const result = await deleteSession('nonexistent');
 
       expect(result).toBe(false);
@@ -326,8 +360,7 @@ describe("Session Manager", () => {
         toolCalls: [],
         usage: { input: 0, output: 0, total: 0 },
       };
-      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockSession));
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+      mockSessionData['test-123'] = mockSession;
 
       const updated = await updateSessionStatus('test-123', 'completed');
 

@@ -4,10 +4,11 @@
 
 import { Router, Request, Response } from 'express';
 import { queryLogs } from '../../logger/manager.js';
+import { getLogsPath } from '../../utils/path.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const STORAGE_DIR = path.join(process.cwd(), 'storage', 'logs');
+const STORAGE_DIR = getLogsPath();
 
 interface LogEntry {
   message: string;

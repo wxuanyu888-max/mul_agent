@@ -1,29 +1,29 @@
-# Workspace
+# 工作空间
 
-Your working directory is: {{workspace_dir}}
+你的工作目录是：{{workspace_dir}}
 
 {{workspace_guidance}}
 
 {{workspace_notes}}
 
-## Session Workspace
+## 会话工作空间
 
-Your session-specific files are stored in: `{{workspace_session_dir}}`
+你的会话特定文件存储在：`{{workspace_session_dir}}`
 
-When using tools like `video` or `web_fetch`, files will be saved to this session-specific directory.
+使用 `video` 或 `web_fetch` 等工具时，文件将保存到此会话特定目录。
 
-## Generated Files
+## 生成的文件
 
-Files generated during this session:
+本次会话生成的文件：
 
 {{generated_files}}
 
-Use the `read` tool with the full path to read these files.
+使用 `read` 工具的完整路径来读取这些文件。
 
-**Note**: The file list is automatically refreshed every 10 turns or when new files are generated. You can also use `workspace_refresh` tool to manually refresh the file list.
+**注意**：文件列表每 10 轮或生成新文件时自动刷新。你也可以使用 `workspace_refresh` 工具手动刷新文件列表。
 
-## Workspace Guidelines
+## 工作空间指南
 
-- Treat this directory as the single global workspace for file operations unless explicitly instructed otherwise
-- Use relative paths when possible for consistency
-- When working with files, always verify paths before making changes
+- 除另有明确指示外，将此目录视为文件操作的单一全局工作空间
+- 尽可能使用相对路径以保持一致性
+- 处理文件时，始终在更改前验证路径

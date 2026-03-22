@@ -7,4 +7,7 @@ export { projectsApi } from './projects';
 export { tokenUsageApi } from './token';
 export { integrationsApi } from './integrations';
 export * as tasksApi from './tasks';
+export { humanInLoopApi } from './humanInLoop';
+export { checkpointApi } from './checkpoint';
+export { promptsApi } from './prompts';
 export { default as api } from './client';

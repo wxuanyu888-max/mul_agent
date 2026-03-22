@@ -36,6 +36,8 @@ export interface LLMRequest {
     description: string;
     input_schema: Record<string, unknown>;
   }>;
+  /** 超时时间 (毫秒)，默认 120000ms (2分钟) */
+  timeoutMs?: number;
 }
 
 /**
@@ -112,15 +114,32 @@ export class LLMClient {
       max_tokens: body.max_tokens ?? this.maxTokens,
     };
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
-    });
+    // 超时控制
+    const timeoutMs = request.timeoutMs ?? 120000; // 默认 2 分钟
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': this.apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      // 处理超时
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`LLM request timeout after ${timeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const elapsed = Date.now() - startTime;
 

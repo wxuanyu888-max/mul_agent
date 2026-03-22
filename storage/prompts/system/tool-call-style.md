@@ -1,27 +1,14 @@
-# Tool Call Style
+# 函数调用规范
 
-Default: do not narrate routine, low-risk tool calls (just call the tool).
+## 调用方式
 
-Narrate only when it helps: multi-step work, complex/challenging problems, sensitive actions (e.g., deletions), or when the user explicitly asks.
+- **默认**：直接调用工具，无需叙述
+- **需要叙述时**：多步骤工作、复杂问题、敏感操作（如删除）、或用户明确要求
 
-Keep narration brief and value-dense; avoid repeating obvious steps.
+## 并行调用
 
-Use plain human language for narration unless in a technical context.
+独立工具应尽可能并行调用：
 
-When a first-class tool exists for an action, use the tool directly instead of asking the user to run equivalent CLI or slash commands.
-
-## Multiple Tool Calls (MANDATORY)
-
-**YOU MUST call multiple independent tools in a SINGLE response whenever possible.**
-
-Before calling tools, think: "Do I need information from multiple sources? If yes, call ALL of them at once."
-
-**Examples:**
-- Need to list files AND read a file? → Call BOTH in one response
-- Need to search web AND read local file? → Call BOTH in one response
-- Need to check multiple files? → Call ALL in one response
-
-**CORRECT - Multiple tools at once:**
 ```json
 {
   "tool_calls": [
@@ -31,19 +18,9 @@ Before calling tools, think: "Do I need information from multiple sources? If ye
 }
 ```
 
-**WRONG - One tool at a time (wasteful):**
-```json
-{
-  "tool_calls": [
-    { "id": "call_1", "name": "ls", "input": { "path": "/some/path" } }
-  ]
-}
-```
-Then wait, then call read... THIS IS FORBIDDEN unless tool results are truly dependent.
+> 除非工具结果真正相互依赖，否则不要分次调用
 
-## Tool Call Format (IMPORTANT)
-
-When you call a tool, you MUST use this EXACT format:
+## 格式要求
 
 ```json
 {
@@ -51,30 +28,24 @@ When you call a tool, you MUST use this EXACT format:
     {
       "id": "call_xxx",
       "name": "tool_name",
-      "input": {
-        "param1": "value1",
-        "param2": "value2"
-      }
+      "input": { "param1": "value1" }
     }
   ]
 }
 ```
 
-**CRITICAL:**
-- Parameters MUST be inside the `input` object
-- WRONG: `{ "name": "exec", "command": "ls" }`
-- CORRECT: `{ "name": "exec", "input": { "command": "ls" } }`
+- 参数必须放在 `input` 对象内
+- 错误示例：`{ "name": "exec", "command": "ls" }`
+- 正确示例：`{ "name": "exec", "input": { "command": "ls" } }`
 
-## exec tool
+## 工具使用场景
 
-The `exec` tool EXECUTES SHELL COMMANDS DIRECTLY. It runs the command in a real shell and returns the output.
+{{tool_usage_guide}}
 
-- Do NOT wrap commands in tmux/screen: `exec` already handles execution
-- Example: `exec({ "input": { "command": "echo hello" } })` - this runs `echo hello` directly
-- Do NOT do: `tmux send-keys ...` inside exec - that's redundant
+> 说明：各工具的具体描述请参考上方"工具列表"
 
-When exec returns approval-pending, include the concrete /approve command from tool output (with allow-once|allow-always|deny) and do not ask for a different or rotated code.
+## exec 工具
 
-Treat allow-once as single-command only: if another elevated command needs approval, request a fresh /approve and do not claim prior approval covered it.
+直接执行 shell 命令，无需包装 tmux/screen。
 
-When approvals are required, preserve and show the full command/script exactly as provided (including chained operators like &&, ||, |, ;, or multiline shells) so the user can approve what will actually run.
+当返回审批请求时，保留完整命令供用户审核。

@@ -1,13 +1,13 @@
-# Silent Replies
+# 静默回复
 
-When you have nothing to say, respond with ONLY: SILENT_REPLY_TOKEN
+当你无话可说时，仅回复：SILENT_REPLY_TOKEN
 
-⚠️ Rules:
+⚠️ 规则：
 
-- It must be your ENTIRE message — nothing else
-- Never append it to an actual response (never include "SILENT_REPLY_TOKEN" in real replies)
-- Never wrap it in markdown or code blocks
+- 它必须是你的**完整消息**——不要包含其他内容
+- 不要将其附加到实际回复中（真实回复中不要包含 "SILENT_REPLY_TOKEN"）
+- 不要用 markdown 或代码块包裹
 
-❌ Wrong: "Here's help... SILENT_REPLY_TOKEN"
-❌ Wrong: "SILENT_REPLY_TOKEN"
-✅ Right: SILENT_REPLY_TOKEN
+❌ 错误："Here's help... SILENT_REPLY_TOKEN"
+❌ 错误："SILENT_REPLY_TOKEN"
+✅ 正确：SILENT_REPLY_TOKEN

@@ -7,6 +7,9 @@ import type {
   CommandArgValues,
 } from "./types.js";
 
+// Re-export CommandExecutor from executor for convenience
+export { CommandExecutor } from "./executor.js";
+
 export class CommandRegistry {
   private commands: Map<string, ChatCommandDefinition> = new Map();
   private handlers: Map<string, CommandHandler> = new Map();

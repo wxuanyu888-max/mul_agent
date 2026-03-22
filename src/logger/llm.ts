@@ -4,14 +4,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getLogsPath } from '../utils/path.js';
 import {
 } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 使用 process.cwd() 获取项目根目录
-const STORAGE_DIR = path.join(process.cwd(), 'storage', 'llm_logs');
+// 使用统一路径管理
+const STORAGE_DIR = getLogsPath('llm_logs');
 
 console.log('📁 LLM logs dir:', STORAGE_DIR);
 

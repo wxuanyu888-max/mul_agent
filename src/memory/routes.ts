@@ -10,6 +10,7 @@ import {
   type MemorySearchConfig,
 } from './types.js';
 import { getMemoryIndexManager } from './manager.js';
+import { getMemoryPersistence } from './persistence.js';
 
 const DEFAULT_AGENT_ID = 'core_brain';
 const DEFAULT_WORKSPACE_DIR = 'storage/memory';
@@ -40,31 +41,6 @@ const DEFAULT_MEMORY_CONFIG: MemorySearchConfig = {
   },
 };
 
-// In-memory storage for high-level memory operations
-// (In production, this would be a database)
-interface MemoryEntry {
-  id: string;
-  agent_id: string;
-  type: 'short_term' | 'long_term' | 'handover';
-  content: {
-    key?: string;
-    value: string;
-    metadata?: Record<string, unknown>;
-  };
-  created_at: string;
-  updated_at: string;
-}
-
-const memoryStore: Map<string, MemoryEntry[]> = new Map();
-
-function getAgentMemories(agentId: string): MemoryEntry[] {
-  const key = agentId || DEFAULT_AGENT_ID;
-  if (!memoryStore.has(key)) {
-    memoryStore.set(key, []);
-  }
-  return memoryStore.get(key)!;
-}
-
 // ============================================================================
 // Express Router Factory
 // ============================================================================
@@ -78,7 +54,8 @@ export function createMemoryRouter(): Router {
       const agentId = (req.query.agent_id as string) || DEFAULT_AGENT_ID;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      const memories = getAgentMemories(agentId).filter((m) => m.type === 'short_term');
+      const persistence = getMemoryPersistence(agentId);
+      const memories = await persistence.getByType('short_term');
 
       // Sort by created_at descending
       const sorted = [...memories].sort(
@@ -101,7 +78,8 @@ export function createMemoryRouter(): Router {
       const agentId = (req.query.agent_id as string) || DEFAULT_AGENT_ID;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      const memories = getAgentMemories(agentId).filter((m) => m.type === 'long_term');
+      const persistence = getMemoryPersistence(agentId);
+      const memories = await persistence.getByType('long_term');
 
       const sorted = [...memories].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -122,7 +100,8 @@ export function createMemoryRouter(): Router {
     try {
       const agentId = (req.query.agent_id as string) || DEFAULT_AGENT_ID;
 
-      const memories = getAgentMemories(agentId).filter((m) => m.type === 'handover');
+      const persistence = getMemoryPersistence(agentId);
+      const memories = await persistence.getByType('handover');
 
       res.json({
         memories,
@@ -137,7 +116,9 @@ export function createMemoryRouter(): Router {
   router.get('/stats', async (req: Request, res: Response) => {
     try {
       const agentId = (req.query.agent_id as string) || DEFAULT_AGENT_ID;
-      const memories = getAgentMemories(agentId);
+
+      const persistence = getMemoryPersistence(agentId);
+      const stats = await persistence.getStats();
 
       // Get index manager status if available
       let indexStatus = null;
@@ -156,10 +137,10 @@ export function createMemoryRouter(): Router {
       res.json({
         agent_id: agentId,
         stats: {
-          total_count: memories.length,
-          short_term_count: memories.filter((m) => m.type === 'short_term').length,
-          long_term_count: memories.filter((m) => m.type === 'long_term').length,
-          handover_count: memories.filter((m) => m.type === 'handover').length,
+          total_count: stats.total,
+          short_term_count: stats.short_term,
+          long_term_count: stats.long_term,
+          handover_count: stats.handover,
           index_status: indexStatus,
         },
       });
@@ -182,12 +163,12 @@ export function createMemoryRouter(): Router {
       const memoryType = req.query.memory_type as 'short_term' | 'long_term' | 'handover' | undefined;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      // First try text-based search
-      let memories = getAgentMemories(agentId);
+      const persistence = getMemoryPersistence(agentId);
 
-      if (memoryType) {
-        memories = memories.filter((m) => m.type === memoryType);
-      }
+      // First try text-based search
+      let memories = memoryType
+        ? await persistence.getByType(memoryType)
+        : await persistence.getAll();
 
       // Simple text search
       const queryLower = query.toLowerCase();
@@ -243,7 +224,8 @@ export function createMemoryRouter(): Router {
       const agentId = (req.query.agent_id as string) || DEFAULT_AGENT_ID;
       const memoryType = (req.query.memory_type as string) || 'short_term';
 
-      const memories = getAgentMemories(agentId).filter((m) => m.type === memoryType);
+      const persistence = getMemoryPersistence(agentId);
+      const memories = await persistence.getByType(memoryType as 'short_term' | 'long_term' | 'handover');
 
       // Extract topics from keys
       const topics = [...new Set(memories.map((m) => m.content.key).filter(Boolean))];
@@ -292,37 +274,20 @@ export function createMemoryRouter(): Router {
       const agentId = agent_id || DEFAULT_AGENT_ID;
       const type = memory_type || 'short_term';
 
-      const memory: MemoryEntry = {
-        id: crypto.randomUUID(),
+      const persistence = getMemoryPersistence(agentId);
+
+      // Add memory via persistence layer (handles limits automatically)
+      const memory = await persistence.add({
         agent_id: agentId,
         type,
         content: {
           value: content,
           metadata,
         },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      });
 
-      // For short-term memory, limit the size - use immutable pattern
-      const memories = getAgentMemories(agentId);
-      let updatedMemories = [...memories];
-
-      if (type === 'short_term' && updatedMemories.filter((m) => m.type === 'short_term').length >= 100) {
-        // Remove oldest short-term memory (immutable)
-        const oldestMemory = updatedMemories
-          .filter((m) => m.type === 'short_term')
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-
-        if (oldestMemory) {
-          updatedMemories = updatedMemories.filter((m) => m.id !== oldestMemory.id);
-        }
-      }
-
-      updatedMemories.push(memory);
-
-      // Update the store (clear and set new array)
-      memoryStore.set(agentId, updatedMemories);
+      // Enforce storage limits
+      await persistence.enforceLimits();
 
       // Also index to vector database if available
       try {
@@ -355,17 +320,8 @@ export function createMemoryRouter(): Router {
       const { memoryId } = req.params;
       const agentId = (req.query.agent_id as string) || DEFAULT_AGENT_ID;
 
-      const memories = getAgentMemories(agentId);
-      const memoryExists = memories.some((m) => m.id === memoryId);
-
-      if (!memoryExists) {
-        res.status(404).json({ error: 'Memory not found' });
-        return;
-      }
-
-      // Use immutable pattern - filter instead of splice
-      const updatedMemories = memories.filter((m) => m.id !== memoryId);
-      memoryStore.set(agentId, updatedMemories);
+      const persistence = getMemoryPersistence(agentId);
+      await persistence.delete(memoryId);
 
       res.json({
         status: 'success',
@@ -373,7 +329,7 @@ export function createMemoryRouter(): Router {
       });
     } catch (error) {
       console.error('Error deleting memory:', error);
-      res.status(500).json({ error: 'Failed to delete memory' });
+      res.status(404).json({ error: 'Memory not found' });
     }
   });
 

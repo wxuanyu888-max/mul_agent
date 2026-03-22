@@ -1,1 +1,1 @@
-Not currently used. Skip this section.
+暂未使用。跳过此部分。

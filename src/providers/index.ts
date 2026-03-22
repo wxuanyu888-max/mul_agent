@@ -14,6 +14,20 @@ import { OllamaProvider } from './ollama.js';
 const providers: Map<string, LLMProvider> = new Map();
 let defaultProvider: LLMProvider | null = null;
 
+// Pre-register default providers
+try {
+  const openaiProvider = new OpenAIProvider({ provider: 'openai' });
+  providers.set(openaiProvider.id, openaiProvider);
+
+  const anthropicProvider = new AnthropicProvider({ provider: 'anthropic' });
+  providers.set(anthropicProvider.id, anthropicProvider);
+
+  const ollamaProvider = new OllamaProvider({ provider: 'ollama' });
+  providers.set(ollamaProvider.id, ollamaProvider);
+} catch {
+  // Ignore registration errors during module load
+}
+
 /**
  * Create a provider by type
  */
@@ -21,19 +35,31 @@ export function createProvider(config: LLMProviderConfig): LLMProvider {
   const { provider } = config;
 
   switch (provider.toLowerCase()) {
-    case 'openai':
-      return new OpenAIProvider(config);
+    case 'openai': {
+      const p = new OpenAIProvider(config);
+      registerProvider(p.id, p);
+      return p;
+    }
 
     case 'anthropic':
-    case 'claude':
-      return new AnthropicProvider(config);
+    case 'claude': {
+      const p = new AnthropicProvider(config);
+      registerProvider(p.id, p);
+      return p;
+    }
 
-    case 'ollama':
-      return new OllamaProvider(config);
+    case 'ollama': {
+      const p = new OllamaProvider(config);
+      registerProvider(p.id, p);
+      return p;
+    }
 
-    case 'azure':
+    case 'azure': {
       // Azure uses OpenAI-compatible API
-      return new OpenAIProvider({ ...config, baseUrl: `${config.baseUrl}/openai/deployments/${config.model}` });
+      const p = new OpenAIProvider({ ...config, baseUrl: `${config.baseUrl}/openai/deployments/${config.model}` });
+      registerProvider(p.id, p);
+      return p;
+    }
 
     default:
       throw new Error(`Unknown provider: ${provider}`);
@@ -110,3 +136,12 @@ export type {
   LLMProviderConfig,
   ProviderType,
 } from './types.js';
+
+// Re-export discovery
+export {
+  ProviderDiscoveryManager,
+  defaultDiscoveryManager,
+  autoDiscoverProviders,
+  type DiscoveryResult,
+  type ProviderDiscoveryOptions,
+} from './discovery.js';

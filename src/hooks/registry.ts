@@ -1,6 +1,9 @@
 // Hook 注册表 - 管理所有注册的钩子
 import type { HookEventType, HookHandler, HookOptions } from "./types.js";
 
+// Re-export HookExecutor from executor for convenience
+export { HookExecutor } from "./executor.js";
+
 export class HookRegistry {
   private handlers: Map<HookEventType, HookHandler[]> = new Map();
 

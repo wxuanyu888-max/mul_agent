@@ -13,6 +13,32 @@
       "status": "SHUTDOWN",
       "createdAt": "2026-03-20T16:38:10.944Z",
       "prompt": "You are a backend developer. Implement APIs efficiently."
+    },
+    {
+      "name": "ui-designer",
+      "role": "UI设计师",
+      "status": "SHUTDOWN",
+      "createdAt": "2026-03-21T02:43:09.382Z",
+      "prompt": "你是早餐系统 TUI 的 UI 设计师。请为早餐系统设计三端的 TUI 界面：\n\n**项目路径**: /Users/agent/PycharmProjects/ai-coding-test\n\n**三端界面需求**:\n\n1. **顾客端 (端口 8025)**:\n   - 菜单浏览界面 - 展示菜品列表（名称、价格、分类）\n   - 购物车界面 - 已选菜品和数量\n   - 下单确认界面\n   - 订单状态查看界面\n\n2. **店主端 (端口 8026)**:\n   - 订单列表界面 - 显示所有订单\n   - 订单详情界面 - 显示单个订单详情\n   - 状态更新按钮区域\n\n3. **叫号端 (端口 8024)**:\n   - 大字叫号显示 - 当前可取餐的订单号\n   - 状态：待取餐\n\n**设计要求**:\n- 使用文本界面 (TUI)\n- 清晰的状态展示\n- 良好的用户体验\n- 考虑终端兼容性\n\n请创建 UI 设计的详细规格文档在 /Users/agent/PycharmProjects/ai-coding-test/docs/ui-design.md"
+    },
+    {
+      "name": "network-engineer\">\n<parameter name=\"prompt\">你是早餐系统 TUI 的通信工程师，负责设计三端通信架构。\n\n**项目路径**: /Users/agent/PycharmProjects/ai-coding-test\n\n**通信需求**:\n- WebSocket 通信\n- 端口分配：\n  - 顾客端: 8025\n  - 店主端: 8026\n  - 叫号端: 8024\n- 中央服务器统一管理订单\n- 实时数据同步\n\n**请设计并实现**:\n1. 通信协议文档 (JSON 格式)\n2. 消息类型定义 (下单、状态更新、广播等)\n3. WebSocket 服务器基础架构\n4. 心跳机制\n5. 断线重连策略\n\n**输出文件**: /Users/agent/PycharmProjects/ai-coding-test/docs/communication.md\n\n请创建详细的通信协议和服务器代码框架。",
+      "role": "通信工程师",
+      "status": "SHUTDOWN",
+      "createdAt": "2026-03-21T02:43:14.633Z"
+    },
+    {
+      "name": "backend-engineer",
+      "role": "后端工程师",
+      "status": "SHUTDOWN",
+      "createdAt": "2026-03-21T02:43:20.839Z",
+      "prompt": "你是早餐系统 TUI 的后端工程师，负责后端业务逻辑开发。\n\n**项目路径**: /Users/agent/PycharmProjects/ai-coding-test\n\n**后端需求**:\n- Node.js 后端服务\n- 订单管理核心逻辑\n- 状态流转控制（必须合法：待接单 → 制作中 → 待取餐 → 已完成）\n- 内存存储（无需数据库）\n\n**功能模块**:\n1. 订单创建 - 顾客下单\n2. 订单状态更新 - 店主操作\n3. 订单查询 - 各端获取订单列表\n4. 状态校验 - 确保状态流转合法\n\n**菜品菜单**:\n- 豆浆 3元\n- 油条 2元\n- 包子(肉) 3元\n- 包子(素) 2.5元\n- 煎饼果子 8元\n- 鸡蛋 1.5元\n- 粥 4元\n\n**请创建后端服务器代码**:\n- /Users/agent/PycharmProjects/ai-coding-test/server/index.js - 主服务器\n- /Users/agent/PycharmProjects/ai-coding-test/server/order.js - 订单管理模块\n\n请实现完整的后端代码。"
+    },
+    {
+      "name": "frontend-engineer\">\n<parameter name=\"prompt\">你是早餐系统 TUI 的前端工程师，负责前端状态管理和三端界面实现。\n\n**项目路径**: /Users/agent/PycharmProjects/ai-coding-test\n\n**前端需求**:\n- Node.js + 终端 TUI 界面\n- 使用 blessed 或类似 TUI 库\n- WebSocket 客户端连接服务器\n\n**三端实现**:\n\n1. **顾客端 (端口 8025)** - /Users/agent/PycharmProjects/ai-coding-test/client/customer.js\n   - 菜单浏览\n   - 购物车\n   - 下单\n   - 订单状态查看\n\n2. **店主端 (端口 8026)** - /Users/agent/PycharmProjects/ai-coding-test/client/owner.js\n   - 订单列表\n   - 状态更新按钮\n   - 实时更新\n\n3. **叫号端 (端口 8024)** - /Users/agent/PycharmProjects/ai-coding-test/client/display.js\n   - 大字显示待取餐订单\n   - 实时刷新\n\n**请实现**:\n1. 三端的前端 TUI 界面代码\n2. WebSocket 客户端封装\n3. 状态管理逻辑\n4. 实时更新机制\n\n请创建完整的前端代码。",
+      "role": "前端工程师",
+      "status": "SHUTDOWN",
+      "createdAt": "2026-03-21T02:43:27.223Z"
     }
   ]
 }

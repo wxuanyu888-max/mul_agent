@@ -5,7 +5,7 @@ import {
   createGatewayTool,
   createSubagentsTool,
   createAgentsListTool,
-} from "../../../src/tools/system/index.js";
+} from "../../../../src/tools/system/index.js";
 
 describe("Tools - System", () => {
   describe("createCronTool", () => {

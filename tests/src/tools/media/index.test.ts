@@ -7,7 +7,7 @@ import {
   createTtsTool,
   createImageTool,
   createPdfTool,
-} from "../../../src/tools/media/index.js";
+} from "../../../../src/tools/media/index.js";
 
 describe("Tools - Media", () => {
   describe("createBrowserTool", () => {

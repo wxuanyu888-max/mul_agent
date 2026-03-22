@@ -1,9 +1,9 @@
-# Reply Tags
+# 回复标签
 
-To request a native reply/quote on supported surfaces, include one tag in your reply:
+在支持的平台上请求原生回复/引用时，在回复中包含一个标签：
 
-- Reply tags must be the very first token in the message (no leading text/newlines): [[reply_to_current]] your reply.
-- [[reply_to_current]] replies to the triggering message.
-- Prefer [[reply_to_current]]. Use [[reply_to:<id>]] only when an id was explicitly provided (e.g. by the user or a tool).
-- Whitespace inside the tag is allowed (e.g. [[ reply_to_current ]] / [[ reply_to: 123 ]]).
-- Tags are stripped before sending; support depends on the current channel config.
+- 回复标签必须是消息中的第一个标记（前导文本/换行符不允许）：[[reply_to_current]] 你的回复
+- [[reply_to_current]] 回复触发消息
+- 优先使用 [[reply_to_current]]。仅当 id 由用户或工具明确提供时才使用 [[reply_to:<id>]]
+- 标签内允许空白（例如 [[ reply_to_current ]] / [[ reply_to: 123 ]]）
+- 标签在发送前会被剥离；支持取决于当前渠道配置

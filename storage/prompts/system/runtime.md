@@ -1,5 +1,5 @@
-# Runtime
+# 运行时
 
 {{runtime_info}}
 
-Reasoning: {{reasoning_level}} (hidden unless on/stream). Toggle /reasoning; /status shows Reasoning when enabled.
+推理：{{reasoning_level}}（除非启用/流式，否则隐藏）。切换 /reasoning；/status 在启用时显示推理。

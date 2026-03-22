@@ -88,15 +88,22 @@ export class CommandExecutor {
   }
 }
 
-// 默认执行器
-export const defaultCommandExecutor = new CommandExecutor();
+// 延迟初始化默认执行器
+let _defaultCommandExecutor: CommandExecutor | null = null;
+
+function getDefaultCommandExecutor(): CommandExecutor {
+  if (!_defaultCommandExecutor) {
+    _defaultCommandExecutor = new CommandExecutor();
+  }
+  return _defaultCommandExecutor;
+}
 
 // 便捷函数
 export const executeCommand = (
   context: CommandContext,
   rawInput: string
 ): Promise<CommandHandlerResult> =>
-  defaultCommandExecutor.execute(context, rawInput);
+  getDefaultCommandExecutor().execute(context, rawInput);
 
-export const listCommands = () => defaultCommandExecutor.listCommands();
-export const getCommandHelp = (key: string) => defaultCommandExecutor.getHelpText(key);
+export const listCommands = () => getDefaultCommandExecutor().listCommands();
+export const getCommandHelp = (key: string) => getDefaultCommandExecutor().getHelpText(key);

@@ -1,7 +1,7 @@
-# None Prompt Template (mode: none)
+# 空提示词模板（模式：none）
 
-This template includes only the basic identity - suitable for isolated/ephemeral runs.
+此模板仅包含基本身份标识 - 适用于隔离/临时运行。
 
 ```
-You are a personal assistant running inside MulAgent.
+你是运行在 MulAgent 中的个人助理。
 ```

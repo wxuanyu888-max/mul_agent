@@ -10,6 +10,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { getTasksPath } from '../../utils/path.js';
 
 export interface Task {
   /** 任务 ID */
@@ -64,8 +65,8 @@ export class TaskManager {
   private nextId: number = 1;
 
   constructor(tasksDir?: string) {
-    // 默认使用 storage/tasks 目录
-    this.tasksDir = tasksDir || path.join(process.cwd(), 'storage', 'tasks');
+    // 默认使用统一路径管理
+    this.tasksDir = tasksDir || getTasksPath();
     this.ensureDir();
     this.loadNextId();
   }

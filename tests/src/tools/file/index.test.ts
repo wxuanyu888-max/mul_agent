@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { createReadTool, createWriteTool, createLsTool, createGrepTool } from "../../../src/tools/file/index.js";
+import { createReadTool, createWriteTool, createLsTool, createGrepTool } from "../../../../src/tools/file/index.js";
 
 describe("Tools - File", () => {
   const testDir = path.join(import.meta.dirname, "test-fixtures");

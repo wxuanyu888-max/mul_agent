@@ -1,4 +1,4 @@
-Reasoning is off by default (hidden unless enabled).
+推理默认关闭（除非启用，否则隐藏）。
 
-- Toggle: /reasoning
-- Check status: /status shows Reasoning when enabled
+- 切换：/reasoning
+- 查看状态：/status 在启用时显示推理

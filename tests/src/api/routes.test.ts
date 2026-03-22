@@ -318,10 +318,10 @@ describe("API Routes", () => {
       });
     });
 
-    describe("GET /thinking/modes", () => {
+    describe("GET /info/thinking/modes", () => {
       it("should return thinking modes", async () => {
         const response = await request(app)
-          .get("/api/v1/thinking/modes");
+          .get("/api/v1/info/thinking/modes");
 
         expect(response.status).toBe(200);
         expect(response.body.modes).toBeDefined();
@@ -329,10 +329,10 @@ describe("API Routes", () => {
       });
     });
 
-    describe("GET /thoughts/:session_id", () => {
+    describe("GET /info/thoughts/:session_id", () => {
       it("should return thoughts for session", async () => {
         const response = await request(app)
-          .get("/api/v1/thoughts/test-session");
+          .get("/api/v1/info/thoughts/test-session");
 
         expect(response.status).toBe(200);
         expect(response.body.session_id).toBe("test-session");
@@ -341,10 +341,10 @@ describe("API Routes", () => {
       });
     });
 
-    describe("POST /thinking/config", () => {
+    describe("POST /info/thinking/config", () => {
       it("should update thinking config", async () => {
         const response = await request(app)
-          .post("/api/v1/thinking/config")
+          .post("/api/v1/info/thinking/config")
           .send({ mode: "high", maxTokens: 4000 });
 
         expect(response.status).toBe(200);

@@ -6,12 +6,14 @@ import { Router, Request, Response } from 'express';
 import { messageQueue } from '../../message/index.js';
 import { AgentLoop } from '../../agents/loop.js';
 import type { Message, SessionMessage } from '../../agents/types.js';
-import { querySessions, getSession, deleteSession } from '../../session/manager.js';
+import { querySessions, getSession, deleteSession, updateSession, createSession } from '../../session/manager.js';
+import { executeCommand, listCommands, type CommandContext } from '../../commands/index.js';
+import { getSessionsPath } from '../../utils/path.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 // Session 存储目录
-const SESSIONS_DIR = path.join(process.cwd(), 'storage', 'sessions');
+const SESSIONS_DIR = getSessionsPath();
 
 // 确保目录存在
 async function ensureDir(dir: string) {
@@ -27,15 +29,38 @@ ensureDir(SESSIONS_DIR);
 const messagesStore: Record<string, SessionMessage[]> = {};
 
 /**
- * 持久化 session 到文件
+ * 持久化 session 到文件，同时更新 index
  */
 async function saveSession(sessionId: string, messages: SessionMessage[]) {
-  const sessionFile = path.join(SESSIONS_DIR, `${sessionId}.json`);
-  await fs.writeFile(sessionFile, JSON.stringify({
-    sessionId,
-    updatedAt: Date.now(),
-    messages
-  }, null, 2));
+  const now = Date.now();
+
+  // 获取第一条用户消息作为 label
+  const firstUserMessage = messages.find((m) => m.role === 'user');
+  const label = firstUserMessage?.content?.substring(0, 100) || '新对话';
+
+  // 检查 session 是否已存在
+  const existingSession = await getSession(sessionId);
+
+  if (existingSession) {
+    // 更新已存在的 session
+    await updateSession(sessionId, {
+      label,
+      updatedAt: now,
+      messages: messages as any,
+    });
+  } else {
+    // 创建新 session（使用传入的 sessionId）
+    await createSession({
+      id: sessionId,
+      label,
+      parentId: 'default',
+      config: { runtime: 'main' },
+    });
+    // 更新消息
+    await updateSession(sessionId, {
+      messages: messages as any,
+    });
+  }
 }
 
 /**
@@ -201,10 +226,9 @@ export function createChatRouter(): Router {
       const session = await getSession(session_id);
 
       if (!session) {
-        res.json({
+        res.status(404).json({
+          error: 'Session not found',
           session_id,
-          messages: [],
-          total: 0,
         });
         return;
       }
@@ -273,6 +297,33 @@ export function createChatRouter(): Router {
     res.write(`data: ${JSON.stringify({ type: 'status', message: '开始处理...' })}\n\n`);
 
     try {
+      // 检测是否是命令
+      const commandContext: CommandContext = {
+        sessionId: session_id,
+        surface: 'api',
+        channel: 'chat',
+      };
+
+      const commandResult = await executeCommand(commandContext, message);
+
+      // 如果是命令且不需要继续，直接返回命令结果
+      if (!commandResult.shouldContinue) {
+        res.write(`data: ${JSON.stringify({
+          type: 'command_response',
+          content: commandResult.reply?.text || commandResult.reply?.markdown || 'Command executed',
+        })}\n\n`);
+        res.end();
+        return;
+      }
+
+      // 如果是命令但需要继续，先发送命令响应然后继续执行
+      if (commandResult.reply) {
+        res.write(`data: ${JSON.stringify({
+          type: 'command_response',
+          content: commandResult.reply?.text || commandResult.reply?.markdown,
+        })}\n\n`);
+      }
+
       // Get conversation history (统一格式，包含完整 tool_use/tool_result)
       const history = messagesStore[session_id] || [];
 
@@ -286,6 +337,7 @@ export function createChatRouter(): Router {
       }));
 
       // 创建 AgentLoop 实例
+      const initStart = Date.now();
       const agent = new AgentLoop({
         maxIterations: 50,
         workspaceDir: process.cwd(),
@@ -311,10 +363,13 @@ export function createChatRouter(): Router {
       });
 
       // 注册所有默认工具
+      const registerStart = Date.now();
       agent.registerDefaultTools();
+      const registerTime = Date.now() - registerStart;
 
       // Send status: thinking
-      res.write(`data: ${JSON.stringify({ type: 'status', message: 'Agent 思考中...' })}\n\n`);
+      const totalInitTime = Date.now() - initStart;
+      res.write(`data: ${JSON.stringify({ type: 'status', message: `初始化完成 (${totalInitTime}ms), 注册工具 (${registerTime}ms)` })}\n\n`);
 
       // 使用 AgentLoop 处理消息
       const startTime = Date.now();

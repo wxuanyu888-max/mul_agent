@@ -6,7 +6,7 @@ import {
   createSessionsSendTool,
   createSessionsSpawnTool,
   createSessionStatusTool,
-} from "../../../src/tools/session/index.js";
+} from "../../../../src/tools/session/index.js";
 
 describe("Tools - Session", () => {
   describe("createSessionsListTool", () => {

@@ -10,8 +10,9 @@ import {
   type LogQueryOptions,
   type LoggerConfig,
 } from './types.js';
+import { getLogsPath } from '../utils/path.js';
 
-const STORAGE_DIR = './storage/logs';
+const STORAGE_DIR = getLogsPath();
 
 /**
  * 默认配置
@@ -271,7 +272,7 @@ export function initLogger(config: Partial<LoggerConfig>): Logger {
  */
 export async function queryLogs(options: LogQueryOptions = {}): Promise<LogEntry[]> {
   const { filter, limit = 100, offset = 0, sort = 'desc' } = options;
-  const logsDir = path.join(process.cwd(), 'storage', 'logs', filter?.agentId || 'default');
+  const logsDir = getLogsPath(filter?.agentId || 'default');
 
   try {
     const entries = await fs.readdir(logsDir);

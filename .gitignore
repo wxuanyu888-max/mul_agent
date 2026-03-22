@@ -1,56 +1,35 @@
-# Python cache
-__pycache__/
-*.py[cod]
-*$py.class
-*.pyo
-
-# Python build
-*.egg-info/
-.eggs/
-dist/
-build/
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# Environment
+# ===== Environment =====
 .env
 .env.local
 .env.*.local
 .venv
 venv/
 ENV/
+*.env
 
-# Logs
-*.log
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
 
-# ===== STORAGE - Runtime data =====
-storage/memory/
-storage/conversations/
-storage/logs/
-storage/network/queue/
-storage/stream_states/
-storage/agent_states/
-storage/token_usage/
-storage/observability/
+# ===== Node.js =====
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# ===== WANG - Agent Config =====
-wang/agent-team/*/*.json
-wang/token_usage/*.json
+# Build outputs
+*.tsbuildinfo
+dist/
+build/
 
-# ===== BUILD & NODE =====
+# ===== UI (React/Vite) =====
 ui/node_modules/
 ui/dist/
 ui/.vite/
@@ -62,18 +41,97 @@ ui/*.d.ts
 !ui/postcss.config.js
 !ui/tailwind.config.js
 
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-.pnpm-store/
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
 
-*.tsbuildinfo
+# ===== Testing =====
+coverage/
+.nyc_output/
+*.lcov
 
-# ===== OTHER PROJECTS =====
+# ===== Logs =====
+*.log
+logs/
+storage/logs/
+
+# ===== Storage - Runtime Data =====
+# 忽略所有运行时数据
+storage/memory/
+storage/sessions/
+storage/workspace/
+storage/llm_logs/
+storage/llm_use/
+storage/tasks/
+storage/team-memory-test/
+storage/teammates/
+storage/checkpoints/
+storage/skills/
+storage/config.json
+storage/*.db
+storage/*.db-shm
+storage/*.db-wal
+# !storage/prompts/ - 保留提示词模板在版本控制中
+
+# ===== Transcripts =====
+.transcripts/
+
+# ===== Plugins =====
+plugins/
+
+# ===== Documentation Development =====
+docs_development/
+
+# ===== Memory =====
+memory.db
+memory.db-shm
+memory.db-wal
+
+# ===== MCP Config (可能包含敏感信息) =====
+.mcp.json
+
+# ===== Secrets (禁止提交) =====
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+credentials.json
+secrets.json
+
+# ===== OpenClaw Reference (参考代码) =====
 openclaw/
+extensions/
 
-# Scripts
+# ===== Scripts Cache =====
 scripts/*.pyc
 scripts/__pycache__/
+
+# ===== Git =====
+.git/
+git-hooks/
+
+# ===== GitHub =====
+.github/
+
+# ===== Build Artifacts =====
+*.tgz
+*.tar.gz
+*.zip
+
+# ===== Temporary Files =====
+tmp/
+temp/
+*.tmp
+*.temp
