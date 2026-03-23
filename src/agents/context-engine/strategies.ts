@@ -204,7 +204,7 @@ export class AutoCompactStrategy implements CompactionStrategy {
     };
 
     // 1. 保存完整 transcript 到磁盘
-    const transcriptDir = cfg.transcriptDir ?? '.transcripts';
+    const transcriptDir = cfg.transcriptDir ?? 'storage/runtime/transcripts';
     const timestamp = Date.now();
     const transcriptPath = path.join(transcriptDir, `transcript_${timestamp}.jsonl`);
 

@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { jsonResult, errorResult } from "../types.js";
 
 // 工作区路径
-const WORKSPACE_DIR = 'runtime/workspace';
+const WORKSPACE_DIR = 'storage/runtime/workspace';
 
 // ============ 模块化提取器 ============
 

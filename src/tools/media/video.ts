@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 const execAsync = promisify(exec);
 
 // 工作区路径
-const WORKSPACE_DIR = 'runtime/workspace';
+const WORKSPACE_DIR = 'storage/runtime/workspace';
 
 // 工具依赖检查
 async function checkDependencies(): Promise<{ ffmpeg: boolean; whisper: boolean; ytdlp: boolean }> {

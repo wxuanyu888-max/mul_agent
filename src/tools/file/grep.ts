@@ -51,7 +51,7 @@ async function getGrepManager() {
       config: {
         ...GREP_MEMORY_CONFIG,
         sources: ['memory'],
-        extraPaths: ['runtime/workspace'],
+        extraPaths: ['storage/runtime/workspace'],
       },
     });
   }
@@ -82,7 +82,7 @@ export function createGrepTool() {
       type: 'object',
       properties: {
         query: { type: 'string', description: 'The search query (supports natural language)' },
-        path: { type: 'string', description: 'Directory path to search in (default: workspace)', default: 'runtime/workspace' },
+        path: { type: 'string', description: 'Directory path to search in (default: workspace)', default: 'storage/runtime/workspace' },
         maxResults: { type: 'number', description: 'Maximum number of results', default: 10 },
         mode: { type: 'string', description: 'Search mode: semantic (vector) or exact (regex)', enum: ['semantic', 'exact'], default: 'semantic' },
       },

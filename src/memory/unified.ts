@@ -116,7 +116,7 @@ export const DEFAULT_UNIFIED_MEMORY_CONFIG: UnifiedMemoryConfig = {
     minScore: 0.5,
   },
   workspace: {
-    directory: 'runtime/workspace',
+    directory: 'storage/runtime/workspace',
     extensions: ['.md', '.txt', '.json', '.ts', '.js', '.py'],
     maxFileSize: 1024 * 1024, // 1MB
   },

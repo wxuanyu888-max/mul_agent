@@ -32,42 +32,7 @@ router.get('/history', (req, res) => {
 });
 
 /**
- * 获取单个干预详情
- */
-router.get('/:id', (req, res) => {
-  const { id } = req.params;
-  const intervention = manager.getIntervention(id);
-
-  if (!intervention) {
-    return res.status(404).json({ error: 'Intervention not found' });
-  }
-
-  res.json({ intervention });
-});
-
-/**
- * 响应干预请求
- */
-router.post('/:id/respond', (req, res) => {
-  const { id } = req.params;
-  const { action, response, modifiedInput } = req.body;
-
-  if (!action || !['approve', 'reject', 'modify', 'timeout'].includes(action)) {
-    return res.status(400).json({ error: 'Invalid action' });
-  }
-
-  manager.respond({
-    interventionId: id,
-    action,
-    response,
-    modifiedInput,
-  });
-
-  res.json({ success: true });
-});
-
-/**
- * 获取中断配置列表
+ * 获取中断配置列表 - 必须在 /:id 之前定义
  */
 router.get('/config', (req, res) => {
   const configs = manager.getInterruptConfigs();
@@ -127,11 +92,46 @@ router.patch('/config/:id/toggle', (req, res) => {
 });
 
 /**
- * 获取统计信息
+ * 获取统计信息 - 必须在 /:id 之前定义
  */
 router.get('/stats', (req, res) => {
   const stats = manager.getStats();
   res.json({ stats });
+});
+
+/**
+ * 获取单个干预详情 - 必须在 /config 和 /stats 之后定义
+ */
+router.get('/:id', (req, res) => {
+  const { id } = req.params;
+  const intervention = manager.getIntervention(id);
+
+  if (!intervention) {
+    return res.status(404).json({ error: 'Intervention not found' });
+  }
+
+  res.json({ intervention });
+});
+
+/**
+ * 响应干预请求
+ */
+router.post('/:id/respond', (req, res) => {
+  const { id } = req.params;
+  const { action, response, modifiedInput } = req.body;
+
+  if (!action || !['approve', 'reject', 'modify', 'timeout'].includes(action)) {
+    return res.status(400).json({ error: 'Invalid action' });
+  }
+
+  manager.respond({
+    interventionId: id,
+    action,
+    response,
+    modifiedInput,
+  });
+
+  res.json({ success: true });
 });
 
 /**
