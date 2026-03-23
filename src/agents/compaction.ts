@@ -21,6 +21,8 @@ export interface CompactionConfig {
   autoCompactThreshold?: number;
   /** 保留最近 N 个 tool result */
   keepRecentResults?: number;
+  /** 保留最近 N 条用户消息（包含当前需求），不压缩 */
+  keepRecentUserMessages?: number;
   /** tool result 超过此长度才进行 micro_compact */
   minResultLengthForCompact?: number;
   /** 摘要最大 token 数 */
@@ -51,6 +53,7 @@ export interface CompactionContext {
 const DEFAULT_CONFIG: Required<CompactionConfig> = {
   autoCompactThreshold: 50000,
   keepRecentResults: 3,
+  keepRecentUserMessages: 2,
   minResultLengthForCompact: 100,
   summaryMaxTokens: 2000,
   preserveSystem: true,
@@ -200,6 +203,8 @@ export function needsAutoCompact(messages: Message[], threshold: number): boolea
 /**
  * Layer 2: auto_compact
  * token 超过阈值时，保存完整对话到磁盘，让 LLM 做摘要
+ *
+ * 重要：保留用户最近的消息（包含当前任务需求），只压缩历史上下文
  */
 export async function autoCompact(
   messages: Message[],
@@ -209,7 +214,28 @@ export async function autoCompact(
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const ctx: CompactionContext = context ?? createCompactionContext();
 
-  // 1. 保存完整 transcript 到磁盘
+  // 1. 保留用户最近的消息（包含当前需求），不压缩
+  const keepRecentUserCount = cfg.keepRecentUserMessages ?? 2;
+  const userMessages = messages.filter((m) => m.role === 'user');
+  const recentUserMessages = userMessages.slice(-keepRecentUserCount);
+
+  // 找出需要保留的消息索引（用户最近的消息 + 系统消息 + tool results）
+  const recentUserIndices = new Set<number>();
+  let userCount = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') {
+      if (userCount < keepRecentUserCount) {
+        recentUserIndices.add(i);
+        userCount++;
+      }
+    }
+  }
+
+  // 分类消息：需要压缩的历史消息 vs 保留的消息
+  const messagesToCompress = messages.filter((_, i) => !recentUserIndices.has(i));
+  const messagesToPreserve = messages.filter((_, i) => recentUserIndices.has(i));
+
+  // 2. 保存完整 transcript 到磁盘
   const transcriptDir = cfg.transcriptDir ?? 'storage/runtime/transcripts';
   const timestamp = Date.now();
   const transcriptPath = path.join(transcriptDir, `transcript_${timestamp}.jsonl`);
@@ -219,7 +245,7 @@ export async function autoCompact(
     fs.mkdirSync(transcriptDir, { recursive: true });
   }
 
-  // 保存 transcript
+  // 保存 transcript（保存所有消息）
   const transcriptStream = fs.createWriteStream(transcriptPath);
   for (const msg of messages) {
     transcriptStream.write(JSON.stringify(msg, (key, value) => {
@@ -234,83 +260,77 @@ export async function autoCompact(
 
   ctx.transcriptPath = transcriptPath;
 
-  // 2. 使用 LLM 做摘要
+  // 3. 使用 LLM 对历史消息做摘要
+  let summaryText = '';
   try {
     const llm = getLLMClient();
 
-    // 准备摘要的上下文（限制长度避免超出 LLM 限制）
-    const messagesText = JSON.stringify(messages, null, 2);
-    const truncatedText = messagesText.slice(0, 80000); // 限制输入长度
+    // 只对需要压缩的历史消息做摘要
+    const messagesToCompressText = JSON.stringify(messagesToCompress, null, 2);
+    const truncatedText = messagesToCompressText.slice(0, 80000);
 
     const summaryResponse = await llm.chat({
       model: (llm as any).model || 'default',
       messages: [
         {
           role: 'user',
-          content: `Please summarize the following conversation for continuity. Include:
+          content: `Please summarize the following conversation history for continuity. Include:
 1. Main topics discussed
 2. Key actions taken (files created, edited, commands run)
-3. Current task progress
-4. Any important decisions or conclusions
+3. Any important decisions or conclusions
+4. Progress made on tasks
 
-Conversation:
+Conversation History (to be summarized):
 ${truncatedText}`,
         },
       ],
       max_tokens: cfg.summaryMaxTokens ?? 2000,
     });
 
-    // 提取摘要文本
-    const summaryText = extractTextFromResponse(summaryResponse);
+    summaryText = extractTextFromResponse(summaryResponse);
+  } catch (error) {
+    console.error('[Compaction] LLM summary failed:', error);
+    summaryText = `[Summary failed - ${messagesToCompress.length} messages preserved in transcript]`;
+  }
 
-    // 3. 用摘要替换所有消息
+  // 4. 构建新的消息列表
+  const compacted: Message[] = [];
+
+  // 保留系统消息（如果配置允许）
+  if (cfg.preserveSystem) {
+    const systemMsgs = messages.filter((m) => m.role === 'system');
+    compacted.push(...systemMsgs);
+  }
+
+  // 添加历史摘要
+  if (messagesToCompress.length > 0) {
     const summaryMessage: Message = {
       role: 'user',
-      content: `[Compressed conversation at ${new Date(timestamp).toISOString()}]
-
+      content: `[Previous conversation (${messagesToCompress.length} messages) summarized at ${new Date(timestamp).toISOString()}]
 
 ## Summary
 
 ${summaryText}
 
 ---
-Previous messages (${messages.length}) have been saved to: ${transcriptPath}
-Use the transcript file to recover full details if needed.`,
+Full transcript saved to: ${transcriptPath}`,
     };
-
-    // 构建新的消息列表
-    const compacted: Message[] = [summaryMessage];
-
-    // 保留系统消息（如果配置允许）
-    if (cfg.preserveSystem) {
-      const systemMsgs = messages.filter((m) => m.role === 'system');
-      compacted.unshift(...systemMsgs);
-    }
-
-    // 添加一个确认消息
-    compacted.push({
-      role: 'assistant',
-      content: 'Understood. I will continue with the summarized context.',
-    });
-
-    ctx.compactionCount++;
-    ctx.lastCompactionTokens = estimateMessageTokens(compacted);
-
-    return { messages: compacted, context: ctx };
-  } catch (error) {
-    // 如果 LLM 摘要失败，至少清理一下消息
-    console.error('[Compaction] LLM summary failed:', error);
-
-    const fallbackSummary: Message = {
-      role: 'user',
-      content: `[Compressed] ${messages.length} messages (summary failed, see ${transcriptPath})`,
-    };
-
-    ctx.compactionCount++;
-    ctx.lastCompactionTokens = estimateMessageTokens([fallbackSummary]);
-
-    return { messages: [fallbackSummary], context: ctx };
+    compacted.push(summaryMessage);
   }
+
+  // 保留用户最近的消息（当前需求）
+  compacted.push(...messagesToPreserve);
+
+  // 添加一个确认消息
+  compacted.push({
+    role: 'assistant',
+    content: 'Understood. I will continue with the current task using the preserved context.',
+  });
+
+  ctx.compactionCount++;
+  ctx.lastCompactionTokens = estimateMessageTokens(compacted);
+
+  return { messages: compacted, context: ctx };
 }
 
 /**

@@ -14,6 +14,8 @@ export interface CompactionConfig {
   autoCompactThreshold?: number;
   /** 保留最近 N 个 tool result */
   keepRecentResults?: number;
+  /** 保留最近 N 条用户消息（包含当前需求），不压缩 */
+  keepRecentUserMessages?: number;
   /** tool result 超过此长度才进行 micro_compact */
   minResultLengthForCompact?: number;
   /** 摘要最大 token 数 */
@@ -44,6 +46,7 @@ export interface CompactionContext {
 export const DEFAULT_COMPACTION_CONFIG: Required<CompactionConfig> = {
   autoCompactThreshold: 50000,
   keepRecentResults: 3,
+  keepRecentUserMessages: 2,
   minResultLengthForCompact: 100,
   summaryMaxTokens: 2000,
   preserveSystem: true,
