@@ -735,111 +735,110 @@ export function ChatPanel() {
     setMessages([]);
   };
 
-  // 语音识别功能
-  const toggleVoiceRecording = async () => {
-    console.log('[Voice] toggleVoiceRecording 被调用, isListening:', isListening);
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    console.log('[Voice] SpeechRecognitionAPI:', SpeechRecognitionAPI);
+    // 语音识别功能 - 使用浏览器原生 Web Speech API
+    const toggleVoiceRecording = async () => {
+      console.log('[Voice] toggleVoiceRecording 被调用, isListening:', isListening);
+      const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+      console.log('[Voice] SpeechRecognitionAPI:', SpeechRecognitionAPI);
 
-    if (!SpeechRecognitionAPI) {
-      // 检查是否在 Safari 浏览器
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      if (isSafari) {
-        alert('Safari 浏览器需要手动开启语音识别功能：\n1. 打开 Safari > 偏好设置 > 隐私\n2. 确保麦克风权限已开启\n3. 或者在地址栏输入：speechRecognition');
-      } else {
+      if (!SpeechRecognitionAPI) {
         alert('您的浏览器不支持语音识别功能，请使用 Chrome、Edge 或 Safari 浏览器');
-      }
-      return;
-    }
-
-    // 如果正在聆听，点击停止
-    if (isListening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      return;
-    }
-
-    // 开始新的识别 - 先请求麦克风权限
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      console.log('[Voice] 麦克风权限已获取，轨道数:', stream.getTracks().length);
-      // 释放流，因为我们只需要 SpeechRecognition 处理
-      stream.getTracks().forEach(track => track.stop());
-    } catch (err) {
-      console.error('[Voice] 获取麦克风权限失败:', err);
-      alert('无法获取麦克风权限，请检查浏览器设置');
-      return;
-    }
-
-    const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = 'zh-CN';
-
-    console.log('[Voice] 麦克风已启动，请说话...');
-
-    let finalTranscript = ''; // 用于在停止时保存最终结果
-
-    recognition.onstart = () => {
-      console.log('[Voice] Recognition onstart - 开始聆听');
-      setIsListening(true);
-      setInterimTranscript('');
-      finalTranscript = '';
-    };
-
-    recognition.onresult = (event: any) => {
-      console.log('[Voice] Recognition onresult 触发, resultIndex:', event.resultIndex);
-      let transcript = '';
-
-      // 直接访问 event.results
-      for (let i = 0; i < event.results.length; i++) {
-        const result = event.results[i];
-        console.log(`[Voice] result[${i}]: isFinal=${result.isFinal}, transcript="${result[0].transcript}"`);
-        transcript += result[0].transcript;
+        return;
       }
 
-      console.log('[Voice] 识别到文字:', transcript, '| 字符数:', transcript.length);
-      setInterimTranscript(transcript);
-
-      // 检查是否是最终结果
-      for (let i = 0; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalTranscript = event.results[i][0].transcript;
-          console.log('[Voice] 最终结果:', finalTranscript);
-          break;
+      // 如果正在聆听，点击停止
+      if (isListening) {
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
         }
+        return;
       }
-    };
 
-    recognition.onerror = (event: any) => {
-      console.error('[Voice] Recognition error:', event.error, event.message);
-      // no-speech 是正常的，用户可能没说话或环境太吵
-      if (event.error === 'no-speech') {
-        console.log('[Voice] 未检测到语音，请对着麦克风说话');
+      // 先获取麦克风权限 - 禁用所有降噪
+      let audioStream: MediaStream | null = null;
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,  // 关闭回声消除
+            noiseSuppression: false,  // 关闭降噪
+            autoGainControl: false,   // 关闭自动增益
+          }
+        });
+        console.log('[Voice] 麦克风权限已获取，轨道数:', audioStream.getTracks().length);
+      } catch (err) {
+        console.error('[Voice] 获取麦克风权限失败:', err);
+        alert('无法获取麦克风权限，请检查浏览器设置');
+        return;
       }
-      setIsListening(false);
-      setInterimTranscript('');
-      recognitionRef.current = null;
-    };
 
-    recognition.onend = () => {
-      console.log('[Voice] Recognition ended');
-      // 点击停止后，将识别结果转入输入框，不自动发送
-      if (finalTranscript) {
-        setInput(finalTranscript);
-      } else if (interimTranscript) {
-        // 如果没有最终结果但有临时结果，也保留
-        setInput(interimTranscript);
-      }
-      setIsListening(false);
-      setInterimTranscript('');
-      recognitionRef.current = null;
-    };
+      const recognition = new SpeechRecognitionAPI();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'zh-CN';
 
-    recognitionRef.current = recognition;
-    recognition.start();
-  };
+      let finalTranscript = '';
+
+      recognition.onstart = () => {
+        console.log('[Voice] Recognition onstart - 开始聆听');
+        setIsListening(true);
+        setInterimTranscript('');
+        finalTranscript = '';
+      };
+
+      recognition.onresult = (event: any) => {
+        console.log('[Voice] Recognition onresult 触发, results length:', event.results.length);
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          const text = event.results[i][0].transcript;
+          console.log(`[Voice] result[${i}]: isFinal=${event.results[i].isFinal}, text="${text}"`);
+          transcript += text;
+        }
+        console.log('[Voice] 识别到文字:', transcript);
+        setInterimTranscript(transcript);
+
+        // 检查最终结果
+        for (let i = 0; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript = event.results[i][0].transcript;
+            break;
+          }
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('[Voice] Recognition error:', event.error);
+        // 停止麦克风流
+        if (audioStream) {
+          audioStream.getTracks().forEach(t => t.stop());
+        }
+        if (event.error === 'no-speech') {
+          alert('未检测到语音。\n\n请确保：\n1. macOS 麦克风模式设为 Standard（不是 Voice Isolation）\n2. 对着麦克风说话声音大一点');
+        }
+        setIsListening(false);
+        setInterimTranscript('');
+        recognitionRef.current = null;
+      };
+
+      recognition.onend = () => {
+        console.log('[Voice] Recognition ended, final:', finalTranscript, 'interim:', interimTranscript);
+        // 停止麦克风流
+        if (audioStream) {
+          audioStream.getTracks().forEach(t => t.stop());
+        }
+        if (finalTranscript) {
+          setInput(finalTranscript);
+        } else if (interimTranscript) {
+          setInput(interimTranscript);
+        }
+        setIsListening(false);
+        setInterimTranscript('');
+        recognitionRef.current = null;
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+      console.log('[Voice] Web Speech API 已启动');
+    };
 
   // TTS 语音合成功能
   const handlePlayTTS = async (content: string, messageIndex: number) => {

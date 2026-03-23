@@ -6,6 +6,7 @@
  */
 
 import { LLMProviderConfig } from '../../providers/types.js';
+import WebSocket from 'ws';
 
 // MiniMax API 配置
 const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN || '';
@@ -67,10 +68,10 @@ export class MiniMaxTTSService {
     } = options;
 
     // 构建 WebSocket URL
-    const wsUrl = `wss://api.minimax.com/ws/v1/t2a_v2?group=${this.apiKey}&character=${voice_id}`;
+    const wsUrl = `wss://api.minimax.chat/ws/v1/t2a_v2?group=${this.apiKey}&character=${voice_id}`;
 
     return new Promise((resolve, reject) => {
-      const ws = new (require('ws'))(wsUrl) as any;
+      const ws = new WebSocket(wsUrl);
 
       let audioChunks: Buffer[] = [];
       let connected = false;
