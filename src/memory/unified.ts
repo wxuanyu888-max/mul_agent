@@ -108,7 +108,7 @@ export const DEFAULT_UNIFIED_MEMORY_CONFIG: UnifiedMemoryConfig = {
     compactThreshold: 150,
   },
   remote: {
-    filePath: 'storage/memory/remote.json',
+    filePath: 'memory/memory/remote.json',
     maxChars: 8000,
   },
   vector: {
@@ -116,7 +116,7 @@ export const DEFAULT_UNIFIED_MEMORY_CONFIG: UnifiedMemoryConfig = {
     minScore: 0.5,
   },
   workspace: {
-    directory: 'storage/workspace',
+    directory: 'runtime/workspace',
     extensions: ['.md', '.txt', '.json', '.ts', '.js', '.py'],
     maxFileSize: 1024 * 1024, // 1MB
   },
@@ -307,7 +307,7 @@ export class UnifiedMemoryManager {
     const fileName = `vector_${Date.now()}.md`;
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
-    const fullPath = path.join('storage/memory', fileName);
+    const fullPath = path.join('memory/memory', fileName);
 
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
     await fs.writeFile(fullPath, content, 'utf-8');

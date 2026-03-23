@@ -1,0 +1,10 @@
+{
+  "url": "https://www.typescriptlang.org/docs/handbook/intro.html",
+  "operation": "read",
+  "status": 200,
+  "contentType": "text/html; charset=utf-8",
+  "type": "html",
+  "category": "webpage",
+  "fetchedAt": "2026-03-23T02:53:22.087Z",
+  "prompt": "获取TypeScript教程的主要内容"
+}

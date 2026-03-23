@@ -1,0 +1,84 @@
+{
+  "h1": "TypeScript 教程",
+  "h2": [
+    "语言特性",
+    "JavaScript 与 TypeScript 的区别",
+    "第一个 TypeScript 实例",
+    "实例"
+  ],
+  "links": [
+    {
+      "href": "http://www.runoob.com/typescript/ts-install.html",
+      "text": "TypeScript 安装"
+    },
+    {
+      "href": "https://www.runoob.com/w3cnote/es6-tutorial.html",
+      "text": "ES6 教程"
+    },
+    {
+      "href": "http://www.runoob.com/typescript/ts-install.html",
+      "text": "TypeScript 安装"
+    },
+    {
+      "href": "https://www.jyshare.com/front-end/6939/",
+      "text": "JS 混淆/加密"
+    },
+    {
+      "href": "https://www.jyshare.com/front-end/6232/",
+      "text": "PNG/JPEG 图片压缩"
+    },
+    {
+      "href": "https://www.jyshare.com/front-end/53",
+      "text": "JSON 格式化工具"
+    },
+    {
+      "href": "https://www.jyshare.com/front-end/6680/",
+      "text": "随机数生成器"
+    },
+    {
+      "href": "http://www.runoob.com/ai-agent/openclaw-quickstart.html",
+      "text": "OpenClaw 快速上手"
+    },
+    {
+      "href": "http://www.runoob.com/ai-agent/openclaw-uninstall.html",
+      "text": "OpenClaw 卸载指南"
+    },
+    {
+      "href": "http://www.runoob.com/ai-agent/openclaw-skills.html",
+      "text": "OpenClaw Skills"
+    },
+    {
+      "href": "http://www.runoob.com/ai-agent/qoderwork.html",
+      "text": "QoderWork 教程"
+    },
+    {
+      "href": "http://www.runoob.com/lua/lua-editor.html",
+      "text": "Lua 编辑器"
+    },
+    {
+      "href": "http://www.runoob.com/ai-agent/cc-switch.html",
+      "text": "CC Switch 一键..."
+    },
+    {
+      "href": "http://www.runoob.com/codex/codex-advanced.html",
+      "text": "Codex 进阶使用技巧"
+    },
+    {
+      "href": "https://beian.miit.gov.cn/",
+      "text": "闽ICP备15012807号-1"
+    }
+  ],
+  "linkCount": 15,
+  "images": [
+    {
+      "src": "//www.runoob.com/wp-content/uploads/2019/01/typescript-logo.jpg"
+    },
+    {
+      "src": "/wp-content/themes/runoob/assets/images/qrcode.png"
+    },
+    {
+      "src": "/wp-content/themes/runoob/assets/images/qrcode.png",
+      "alt": "微信关注"
+    }
+  ]
+}

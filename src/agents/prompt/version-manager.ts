@@ -15,7 +15,7 @@ import type {
   ABTestRequest,
 } from './versions.js';
 
-const STORAGE_DIR = '/Users/agent/PycharmProjects/mul_agent/storage/prompts/versions';
+const STORAGE_DIR = '/Users/agent/PycharmProjects/mul_agent/storage/config/prompts/versions';
 
 /**
  * 获取模板存储路径

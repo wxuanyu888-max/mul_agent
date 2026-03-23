@@ -1,4 +1,7 @@
 # MulAgent Project Instructions
+## 注意由于token的调用现在变成按照次数付费，请你经量一次性多次调用工具减少请求次数（一定要注意应用的部分）
+## 项目的需求开发规范也是每次都要使用的，一定要按照这个流程去做
+
 
 > Multi-Agent Collaboration System
 

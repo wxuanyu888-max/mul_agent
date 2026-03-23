@@ -36,6 +36,7 @@ ui/.vite/
 ui/test-results/
 ui/playwright-report/
 ui/*.tsbuildinfo
+ui/tsconfig.tsbuildinfo
 ui/*.js
 ui/*.d.ts
 !ui/postcss.config.js
@@ -69,20 +70,17 @@ storage/logs/
 # ===== Storage - Runtime Data =====
 # 忽略所有运行时数据
 storage/memory/
-storage/sessions/
-storage/workspace/
-storage/llm_logs/
-storage/llm_use/
-storage/tasks/
-storage/team-memory-test/
-storage/teammates/
-storage/checkpoints/
-storage/skills/
-storage/config.json
+storage/agent/
+storage/runtime/
+storage/config/skills/
+storage/config/teammates/
+storage/config/config.json
 storage/*.db
 storage/*.db-shm
 storage/*.db-wal
-# !storage/prompts/ - 保留提示词模板在版本控制中
+
+# 保留配置模板在版本控制中
+!storage/config/prompts/
 
 # ===== Transcripts =====
 .transcripts/

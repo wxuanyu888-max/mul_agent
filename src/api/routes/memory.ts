@@ -165,7 +165,7 @@ export function createMemoryRouter(): Router {
     res.json({
       status: 'success',
       memory_id: memory.id,
-      path: `storage/memory/${agentId}_${type}.json`
+      path: `memory/memory/${agentId}_${type}.json`
     });
   });
 

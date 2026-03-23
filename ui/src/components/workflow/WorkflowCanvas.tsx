@@ -84,16 +84,38 @@ const CustomNodeComponent = memo(function CustomNode({ data, selected }: NodePro
   const color = nodeColors[nodeData.type as keyof typeof nodeColors] || nodeColors.agent;
   const Icon = nodeData.icon || Bot;
 
-  // 状态指示器
+  // 状态指示器 - 增强显示
   const statusColors: Record<string, string> = {
-    running: 'bg-green-500 animate-pulse',
-    pending: 'bg-amber-400',
-    completed: 'bg-blue-500',
-    failed: 'bg-red-500',
     idle: 'bg-gray-400',
-    working: 'bg-green-500 animate-pulse',
+    planning: 'bg-yellow-500 animate-pulse',
     thinking: 'bg-yellow-500 animate-pulse',
-    executing: 'bg-blue-500 animate-pulse',
+    executing: 'bg-green-500 animate-pulse',
+    running: 'bg-green-500 animate-pulse',
+    working: 'bg-green-500 animate-pulse',
+    waiting: 'bg-blue-400 animate-pulse',
+    pending: 'bg-amber-400',
+    active: 'bg-green-500 animate-pulse',
+    completed: 'bg-blue-500',
+    success: 'bg-blue-500',
+    failed: 'bg-red-500',
+    error: 'bg-red-500',
+  };
+
+  // 状态中文映射
+  const statusLabels: Record<string, string> = {
+    idle: '空闲',
+    planning: '规划中',
+    thinking: '思考中',
+    executing: '执行工具',
+    running: '运行中',
+    working: '工作中',
+    waiting: '等待响应',
+    pending: '等待中',
+    active: '活跃',
+    completed: '已完成',
+    success: '成功',
+    failed: '失败',
+    error: '错误',
   };
 
   // 根据节点类型选择图标
@@ -130,7 +152,9 @@ const CustomNodeComponent = memo(function CustomNode({ data, selected }: NodePro
           <span className="text-gray-900 font-semibold text-sm block truncate">{nodeData.label}</span>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className={`w-2 h-2 rounded-full ${statusColors[nodeData.status || 'idle']}`} />
-            <span className="text-gray-500 text-xs capitalize truncate">{nodeData.status || 'idle'}</span>
+            <span className="text-gray-500 text-xs capitalize truncate">
+              {statusLabels[nodeData.status || 'idle'] || nodeData.status || 'idle'}
+            </span>
           </div>
         </div>
       </div>
@@ -144,9 +168,12 @@ const CustomNodeComponent = memo(function CustomNode({ data, selected }: NodePro
         <p className="text-gray-400 text-xs mt-1 ml-11 truncate max-w-[150px]">{nodeData.description}</p>
       )}
       {nodeData.currentWork && (
-        <div className="mt-2 ml-11 p-1.5 bg-blue-50 rounded border border-blue-100">
-          <p className="text-blue-700 text-xs font-medium">Working:</p>
-          <p className="text-blue-600 text-xs truncate">{nodeData.currentWork}</p>
+        <div className="mt-2 ml-11 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Loader2 className="w-3 h-3 text-blue-500 animate-spin" />
+            <p className="text-blue-700 text-xs font-semibold">Current Task</p>
+          </div>
+          <p className="text-blue-800 text-xs font-mono truncate leading-relaxed">{nodeData.currentWork}</p>
         </div>
       )}
       <Handle
@@ -181,7 +208,9 @@ const CustomEdgeComponent = memo(function CustomEdge({
     targetPosition,
   });
 
-  const edgeData = data as unknown as { label?: string; type?: string; status?: string; source?: string; target?: string };
+  const [isHovered, setIsHovered] = useState(false);
+
+  const edgeData = data as unknown as { label?: string; type?: string; status?: string; source?: string; target?: string; task?: string };
 
   // 获取 source 和 target（从 edge data 或 style 中获取）
   const source = edgeData?.source || '';
@@ -207,6 +236,14 @@ const CustomEdgeComponent = memo(function CustomEdge({
   // 脉冲动画样式
   const pulseAnimation = isActive ? 'pulse 1.5s ease-in-out infinite' : 'none';
 
+  // 计算边的中点位置
+  const midX = (sourceX + targetX) / 2;
+  const midY = (sourceY + targetY) / 2;
+
+  // 根据边类型调整标签宽度
+  const labelWidth = edgeData?.label && edgeData.label.length > 8 ? edgeData.label.length * 7 + 20 : 70;
+  const labelHeight = isHovered && edgeData?.task ? 60 : 24;
+
   return (
     <>
       <path
@@ -223,22 +260,30 @@ const CustomEdgeComponent = memo(function CustomEdge({
         d={edgePath}
         markerEnd={markerEnd}
         onClick={onClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       />
       {edgeData?.label && (
-        <g onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
+        <g
+          onClick={onClick}
+          style={{ cursor: onClick ? 'pointer' : 'default' }}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
           <rect
-            x={(sourceX + targetX) / 2 - 35}
-            y={(sourceY + targetY) / 2 - 12}
-            width={70}
-            height={24}
+            x={midX - labelWidth / 2}
+            y={midY - labelHeight / 2}
+            width={labelWidth}
+            height={labelHeight}
             fill="white"
             rx={6}
             stroke={strokeColor}
             strokeWidth={1}
+            className={isActive ? 'animate-pulse' : ''}
           />
           <text
-            x={(sourceX + targetX) / 2}
-            y={(sourceY + targetY) / 2 + 4}
+            x={midX}
+            y={midY + (isHovered && edgeData?.task ? -8 : 4)}
             style={{
               fontSize: '10px',
               fill: strokeColor,
@@ -248,6 +293,45 @@ const CustomEdgeComponent = memo(function CustomEdge({
           >
             {edgeData.label}
           </text>
+          {/* 悬停时显示任务详情 */}
+          {isHovered && edgeData?.task && (
+            <>
+              <line
+                x1={midX - labelWidth / 2 + 8}
+                y1={midY + 2}
+                x2={midX + labelWidth / 2 - 8}
+                y2={midY + 2}
+                stroke={strokeColor}
+                strokeWidth={0.5}
+                opacity={0.3}
+              />
+              <text
+                x={midX}
+                y={midY + 14}
+                style={{
+                  fontSize: '8px',
+                  fill: '#6b7280',
+                  textAnchor: 'middle',
+                }}
+              >
+                {edgeData.task.length > 20 ? edgeData.task.substring(0, 20) + '...' : edgeData.task}
+              </text>
+              {edgeData.status && (
+                <text
+                  x={midX}
+                  y={midY + 24}
+                  style={{
+                    fontSize: '7px',
+                    fill: edgeData.status === 'executing' || edgeData.status === 'active' ? '#22c55e' : '#6b7280',
+                    textAnchor: 'middle',
+                    fontWeight: 600,
+                  }}
+                >
+                  ● {edgeData.status}
+                </text>
+              )}
+            </>
+          )}
         </g>
       )}
     </>
@@ -570,6 +654,8 @@ const getInitialNodes = (agentTeam?: Agent[], project_id?: string): CustomNode[]
         description: 'Central Coordinator',
         icon: Brain,
         status: 'idle',
+        agentId: 'core_brain',
+        agentType: 'coordinator',
       },
     },
   ];
@@ -920,7 +1006,7 @@ export function WorkflowCanvas() {
     fetchStatus();
     const interval = setInterval(() => {
       if (mounted) fetchWorkflowStatus();
-    }, 3000); // 每 3 秒刷新一次
+    }, 2000); // 每 2 秒刷新一次
 
     return () => {
       mounted = false;
@@ -941,7 +1027,7 @@ export function WorkflowCanvas() {
     fetchInteractionsData();
     const interval = setInterval(() => {
       if (mounted) fetchInteractions();
-    }, 5000); // 每 5 秒刷新一次交互数据
+    }, 2000); // 每 2 秒刷新一次交互数据
 
     return () => {
       mounted = false;
@@ -1088,6 +1174,33 @@ export function WorkflowCanvas() {
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-pink-500" style={{ backgroundColor: nodeColors.user.border }} />
             <span className="text-gray-600">User</span>
+          </div>
+          <div className="border-t border-gray-200 my-1.5" />
+          {/* Status Legend */}
+          <div className="text-xs font-semibold text-gray-500 mb-1">Status:</div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-gray-600">Running/Executing</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" />
+            <span className="text-gray-600">Thinking/Planning</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse" />
+            <span className="text-gray-600">Waiting</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+            <span className="text-gray-600">Completed</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+            <span className="text-gray-600">Error</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-gray-400" />
+            <span className="text-gray-600">Idle</span>
           </div>
           <div className="border-t border-gray-200 my-1.5" />
           <div className="flex items-center gap-2">

@@ -4,6 +4,92 @@
 
 import { Router, Request, Response } from 'express';
 
+// 全局 Agent 运行状态
+interface WorkflowState {
+  active: boolean;
+  run_id: string | null;
+  input: string | null;
+  status: string | null;
+  phase: string | null;
+  sub_agents: Array<{
+    agent_id: string;
+    agent_type: string;
+    status: string;
+    input: string;
+  }>;
+  flow: Array<Record<string, unknown>>;
+}
+
+interface AgentTeamState {
+  agents: Array<{
+    agent_id: string;
+    name: string;
+    description: string;
+    role: string;
+    status: string;
+  }>;
+  active_sub_agents: Record<string, unknown>;
+  current_task: {
+    active: boolean;
+    input: string | null;
+    status: string | null;
+  };
+}
+
+// 全局状态存储
+let workflowState: WorkflowState = {
+  active: false,
+  run_id: null,
+  input: null,
+  status: null,
+  phase: null,
+  sub_agents: [],
+  flow: [],
+};
+
+let agentTeamState: AgentTeamState = {
+  agents: [],
+  active_sub_agents: {},
+  current_task: { active: false, input: null, status: null },
+};
+
+let interactionsState: Array<{
+  run_id: string;
+  source: string;
+  target: string;
+  type: string;
+  task: string;
+  status: string;
+  timestamp: number;
+}> = [];
+
+// 导出设置函数供其他模块使用
+export function setWorkflowState(state: Partial<WorkflowState>) {
+  workflowState = { ...workflowState, ...state };
+}
+
+export function setAgentTeamState(state: Partial<AgentTeamState>) {
+  agentTeamState = { ...agentTeamState, ...state };
+}
+
+export function addInteraction(interaction: {
+  run_id: string;
+  source: string;
+  target: string;
+  type: string;
+  task: string;
+  status: string;
+}) {
+  interactionsState.push({
+    ...interaction,
+    timestamp: Math.floor(Date.now() / 1000),
+  });
+  // 只保留最近 50 条
+  if (interactionsState.length > 50) {
+    interactionsState = interactionsState.slice(-50);
+  }
+}
+
 export function createInfoRouter(): Router {
   const router = Router();
 
@@ -31,15 +117,7 @@ export function createInfoRouter(): Router {
 
   // GET /info/workflow/current
   router.get('/info/workflow/current', (req: Request, res: Response) => {
-    res.json({
-      active: false,
-      run_id: null,
-      input: null,
-      status: null,
-      phase: null,
-      sub_agents: [],
-      flow: []
-    });
+    res.json(workflowState);
   });
 
   // GET /info/workflow/latest
@@ -49,11 +127,7 @@ export function createInfoRouter(): Router {
 
   // GET /info/agent-team
   router.get('/info/agent-team', (req: Request, res: Response) => {
-    res.json({
-      agents: [],
-      active_sub_agents: {},
-      current_task: { active: false, input: null, status: null }
-    });
+    res.json(agentTeamState);
   });
 
   // GET /info/agent/:agent_id/details
@@ -86,7 +160,7 @@ export function createInfoRouter(): Router {
 
   // GET /info/interactions
   router.get('/info/interactions', (req: Request, res: Response) => {
-    res.json({ interactions: [] });
+    res.json({ interactions: interactionsState });
   });
 
   // GET /info/interactions/:source/:target

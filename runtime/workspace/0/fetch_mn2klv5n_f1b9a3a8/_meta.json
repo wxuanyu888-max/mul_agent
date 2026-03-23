@@ -1,0 +1,10 @@
+{
+  "url": "https://www.typescriptlang.org/docs/",
+  "operation": "read",
+  "status": 200,
+  "contentType": "text/html; charset=utf-8",
+  "type": "html",
+  "category": "webpage",
+  "fetchedAt": "2026-03-23T02:32:28.668Z",
+  "prompt": "Extract TypeScript tutorial and learning resources information"
+}

@@ -4,12 +4,13 @@
  * TTS 和语音对话接口
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { edgeTTSService, CHINESE_VOICES, ENGLISH_VOICES } from '../../tools/media/edge-tts.js';
+import { miniMaxTTSService, MINIMAX_VOICES } from '../../tools/media/minimax-tts.js';
 import { asrService } from '../../tools/media/asr.js';
 import { createAgentLoop } from '../../agents/loop.js';
 
-const router = Router();
+const router: Router = Router();
 
 // ============================================
 // ASR 接口 (语音识别)
@@ -91,6 +92,69 @@ router.get('/voices', async (_req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('[Voice API] Get voices error:', error);
+    res.status(500).json({ error: `Failed: ${error}` });
+  }
+});
+
+// ============================================
+// MiniMax TTS 接口
+// ============================================
+
+/**
+ * POST /api/v1/voice/tts/minimax
+ * MiniMax 文本转语音
+ */
+router.post('/tts/minimax', async (req: Request, res: Response) => {
+  try {
+    const {
+      text,
+      voice_id = 'male-qn-qingse',
+      speed = 1.0,
+      vol = 1.0,
+      pitch = 0,
+      emotion = 'calm',
+      format = 'mp3',
+    } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ error: 'text is required' });
+    }
+
+    const audioBuffer = await miniMaxTTSService.synthesize(text, {
+      voice_id,
+      speed,
+      vol,
+      pitch,
+      emotion,
+      format: format as 'mp3' | 'pcm' | 'flac',
+    });
+
+    const contentType = format === 'mp3' ? 'audio/mp3' : format === 'wav' ? 'audio/wav' : format === 'flac' ? 'audio/flac' : 'audio/mp3';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', 'attachment; filename="speech.mp3"');
+    res.send(audioBuffer);
+  } catch (error) {
+    console.error('[Voice API] MiniMax TTS error:', error);
+    res.status(500).json({ error: `MiniMax TTS failed: ${error}` });
+  }
+});
+
+/**
+ * GET /api/v1/voice/voices/minimax
+ * 获取 MiniMax 可用语音列表
+ */
+router.get('/voices/minimax', async (_req: Request, res: Response) => {
+  try {
+    const voices = miniMaxTTSService.getVoices();
+    res.json({
+      voices,
+      recommended: {
+        chinese: voices.filter(v => v.language === 'Chinese').map(v => v.id),
+        english: voices.filter(v => v.language === 'English').map(v => v.id),
+      },
+    });
+  } catch (error) {
+    console.error('[Voice API] Get MiniMax voices error:', error);
     res.status(500).json({ error: `Failed: ${error}` });
   }
 });
@@ -194,6 +258,6 @@ router.post('/chat/stream', async (req: Request, res: Response) => {
 
 export default router;
 
-export function createVoiceRouter() {
+export function createVoiceRouter(): Router {
   return router;
 }

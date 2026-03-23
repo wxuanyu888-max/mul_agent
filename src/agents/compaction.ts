@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getLLMClient } from './llm.js';
 import type { Message, ContentBlock } from './types.js';
+import { getLogsPath } from '../utils/path.js';
 
 /**
  * 压缩配置
@@ -53,7 +54,7 @@ const DEFAULT_CONFIG: Required<CompactionConfig> = {
   minResultLengthForCompact: 100,
   summaryMaxTokens: 2000,
   preserveSystem: true,
-  transcriptDir: '.transcripts',
+  transcriptDir: 'storage/runtime/transcripts',
 };
 
 /**

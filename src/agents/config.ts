@@ -1,7 +1,7 @@
 /**
  * Agent 配置加载模块
  *
- * 从 storage/config.json 加载配置
+ * 从 config/config.json 加载配置
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // 配置文件路径
-const CONFIG_PATH = join(__dirname, '../../storage/config.json');
+const CONFIG_PATH = join(__dirname, '../../storage/config/config.json');
 
 /**
  * Agent 配置

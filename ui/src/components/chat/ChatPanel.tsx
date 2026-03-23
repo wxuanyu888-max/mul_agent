@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, User, Bot, Loader2, RefreshCw, Trash2, Menu, MessageSquare, ChevronRight, ChevronDown, CheckCircle, AlertCircle, Play, Brain, Activity, Clock, Mic, MicOff } from 'lucide-react';
+import { Send, User, Bot, Loader2, RefreshCw, Trash2, Menu, MessageSquare, ChevronRight, ChevronDown, CheckCircle, AlertCircle, Play, Brain, Activity, Clock, Mic, MicOff, Volume2, Square } from 'lucide-react';
 import { chatApi, infoApi } from '../../services/api';
+import { synthesizeSpeech, playAudio, stopAudio } from '../../services/endpoints/voice';
 
 // Web Speech API 类型声明
 declare global {
@@ -252,6 +253,12 @@ export function ChatPanel() {
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
+
+  // 语音合成状态 (TTS)
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [selectedVoice, setSelectedVoice] = useState('male-qn-qingse');
 
   // 跟踪每个步骤的开始时间
   const stepStartTimes = useRef<Map<string, number>>(new Map());
@@ -730,10 +737,18 @@ export function ChatPanel() {
 
   // 语音识别功能
   const toggleVoiceRecording = () => {
+    console.log('[Voice] toggleVoiceRecording 被调用, isListening:', isListening);
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    console.log('[Voice] SpeechRecognitionAPI:', SpeechRecognitionAPI);
 
     if (!SpeechRecognitionAPI) {
-      alert('您的浏览器不支持语音识别功能，请使用 Chrome、Edge 或 Safari 浏览器');
+      // 检查是否在 Safari 浏览器
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      if (isSafari) {
+        alert('Safari 浏览器需要手动开启语音识别功能：\n1. 打开 Safari > 偏好设置 > 隐私\n2. 确保麦克风权限已开启\n3. 或者在地址栏输入：speechRecognition');
+      } else {
+        alert('您的浏览器不支持语音识别功能，请使用 Chrome、Edge 或 Safari 浏览器');
+      }
       return;
     }
 
@@ -799,6 +814,52 @@ export function ChatPanel() {
 
     recognitionRef.current = recognition;
     recognition.start();
+  };
+
+  // TTS 语音合成功能
+  const handlePlayTTS = async (content: string, messageIndex: number) => {
+    // 如果正在播放同一个消息，停止播放
+    if (playingMessageIndex === messageIndex && isPlaying) {
+      stopAudio(audioRef.current);
+      setIsPlaying(false);
+      setPlayingMessageIndex(null);
+      return;
+    }
+
+    // 停止当前播放
+    if (audioRef.current) {
+      stopAudio(audioRef.current);
+    }
+
+    try {
+      setIsPlaying(true);
+      setPlayingMessageIndex(messageIndex);
+
+      const blob = await synthesizeSpeech(content, {
+        voice_id: selectedVoice,
+        speed: 1.0,
+        emotion: 'calm',
+      });
+
+      const audio = playAudio(blob);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setIsPlaying(false);
+        setPlayingMessageIndex(null);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        setIsPlaying(false);
+        setPlayingMessageIndex(null);
+        audioRef.current = null;
+      };
+    } catch (error) {
+      console.error('TTS playback error:', error);
+      setIsPlaying(false);
+      setPlayingMessageIndex(null);
+    }
   };
 
   return (
@@ -927,6 +988,30 @@ export function ChatPanel() {
                         </ReactMarkdown>
                       </div>
                     )}
+                    {/* TTS 播放按钮 - 仅 AI 消息显示 */}
+                    {!isUser && (
+                      <button
+                        onClick={() => handlePlayTTS(msg.content, index)}
+                        className={`mt-2 flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg transition-colors ${
+                          playingMessageIndex === index && isPlaying
+                            ? 'bg-red-100 text-red-600'
+                            : 'bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-600'
+                        }`}
+                        title={playingMessageIndex === index && isPlaying ? '停止播放' : '播放语音'}
+                      >
+                        {playingMessageIndex === index && isPlaying ? (
+                          <>
+                            <Square className="w-3 h-3" />
+                            <span>停止</span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="w-3 h-3" />
+                            <span>朗读</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                     <p
                       className={`text-xs mt-1 ${
                         isUser ? 'text-blue-100' : 'text-gray-400'
@@ -1000,11 +1085,11 @@ export function ChatPanel() {
 
       {/* Input */}
       <div className="px-6 py-4 border-t border-gray-200 bg-white">
-        <div className="flex items-end gap-3">
-          {/* Voice Input Button */}
+        <div className="flex items-center gap-3">
+          {/* Voice Input Button - 高度固定44px与输入框对齐 */}
           <button
             onClick={toggleVoiceRecording}
-            className={`p-3 rounded-xl transition-all flex-shrink-0 ${
+            className={`w-11 h-11 rounded-xl transition-all flex-shrink-0 flex items-center justify-center ${
               isListening
                 ? 'bg-red-100 text-red-600 animate-pulse'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
@@ -1020,12 +1105,12 @@ export function ChatPanel() {
 
           {/* Input Area */}
           <div className="flex-1 relative">
-            {/* 语音聆听模式：输入框显示实时转录结果，可编辑 */}
+            {/* 语音聆听模式：顶部提示条 */}
             {isListening && (
-              <div className="absolute left-0 top-0 z-10 flex items-center gap-2 w-full bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 pointer-events-none"
-                style={{ opacity: 0.9 }}>
-                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
-                <span className="text-red-600 font-bold text-sm flex-shrink-0">🎙️ 正在聆听</span>
+              <div className="absolute left-0 top-0 z-10 flex items-center gap-2 w-full bg-red-50 border-2 border-red-200 rounded-t-xl px-4 py-2 pointer-events-none"
+                style={{ opacity: 0.95 }}>
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                <span className="text-red-600 font-bold text-xs flex-shrink-0">正在聆听</span>
                 <span className="text-red-500 text-xs">
                   {interimTranscript ? `已识别 ${interimTranscript.length} 字` : '等待声音...'}
                 </span>
@@ -1037,7 +1122,7 @@ export function ChatPanel() {
               onKeyDown={isListening ? undefined : handleInputKeyDown}
               placeholder={isListening ? "正在识别..." : "Type your message... (try /help, /status, /list)"}
               rows={1}
-              className={`w-full resize-none bg-gray-50 border rounded-xl px-4 py-3 text-gray-700 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent max-h-32 ${isListening ? 'border-red-200 bg-red-50/50' : 'border-gray-200'}`}
+              className={`w-full resize-none bg-gray-50 border rounded-xl px-4 py-3 text-gray-700 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent max-h-32 ${isListening ? 'border-red-200 bg-red-50/50 rounded-t-none' : 'border-gray-200'}`}
               style={{ minHeight: '44px' }}
             />
             {!isListening && showAutocomplete && (
@@ -1052,18 +1137,18 @@ export function ChatPanel() {
             )}
           </div>
 
-          {/* Send Button */}
+          {/* Send Button - 高度固定44px与输入框对齐 */}
           <button
             onClick={sendMessage}
             disabled={!input.trim() && !isListening}
-            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl font-medium text-sm transition-all disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 h-11 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl font-medium text-sm transition-all disabled:cursor-not-allowed flex items-center gap-2 flex-shrink-0"
           >
             {pendingRequests.size > 0 ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Send className="w-4 h-4" />
             )}
-            Send
+            <span className="hidden sm:inline">Send</span>
           </button>
         </div>
       </div>

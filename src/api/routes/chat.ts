@@ -9,6 +9,7 @@ import type { Message, SessionMessage } from '../../agents/types.js';
 import { querySessions, getSession, deleteSession, updateSession, createSession } from '../../session/manager.js';
 import { executeCommand, listCommands, type CommandContext } from '../../commands/index.js';
 import { getSessionsPath } from '../../utils/path.js';
+import { setWorkflowState, setAgentTeamState, addInteraction } from './info.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -293,6 +294,40 @@ export function createChatRouter(): Router {
       messagesStore[session_id] = await loadSession(session_id);
     }
 
+    // 设置工作流状态为活跃
+    setWorkflowState({
+      active: true,
+      run_id: session_id,
+      input: message,
+      status: 'running',
+      phase: 'thinking',
+      sub_agents: [],
+      flow: [],
+    });
+
+    // 设置 Agent Team 状态
+    setAgentTeamState({
+      agents: [{
+        agent_id: 'core_brain',
+        name: 'Core Brain',
+        description: 'Central Coordinator',
+        role: 'coordinator',
+        status: 'running',
+      }],
+      active_sub_agents: {},
+      current_task: { active: true, input: message, status: 'running' },
+    });
+
+    // 记录交互
+    addInteraction({
+      run_id: session_id,
+      source: 'user',
+      target: 'core_brain',
+      type: 'chat',
+      task: message,
+      status: 'executing',
+    });
+
     // Send status: start
     res.write(`data: ${JSON.stringify({ type: 'status', message: '开始处理...' })}\n\n`);
 
@@ -382,6 +417,35 @@ export function createChatRouter(): Router {
 
       // Send status: completed
       res.write(`data: ${JSON.stringify({ type: 'status', message: `处理完成 (${elapsed}ms), 迭代: ${result.iterations}, 工具调用: ${result.toolCalls}` })}\n\n`);
+
+      // 更新工作流状态为完成
+      setWorkflowState({
+        active: false,
+        status: 'completed',
+        phase: 'completed',
+      });
+
+      // 更新 Agent Team 状态
+      setAgentTeamState({
+        agents: [{
+          agent_id: 'core_brain',
+          name: 'Core Brain',
+          description: 'Central Coordinator',
+          role: 'coordinator',
+          status: 'completed',
+        }],
+        current_task: { active: false, input: null, status: 'completed' },
+      });
+
+      // 更新交互状态
+      addInteraction({
+        run_id: session_id,
+        source: 'user',
+        target: 'core_brain',
+        type: 'chat',
+        task: message,
+        status: 'completed',
+      });
 
       // Send the response
       res.write(`data: ${JSON.stringify({ type: 'response', response: result.content, conversation_id: session_id })}\n\n`);

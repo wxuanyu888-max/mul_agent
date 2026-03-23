@@ -1,11 +1,12 @@
 // Team Memory 单元测试 - T-006
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
 describe("Team Memory (T-006)", () => {
   // 使用临时目录进行测试
-  const testDir = path.join(process.cwd(), 'storage', 'team-memory-test');
+  const testDir = path.join(os.tmpdir(), 'mul_agent_test', 'team-memory-test');
 
   // 动态导入模块前设置环境变量
   beforeEach(() => {

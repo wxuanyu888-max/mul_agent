@@ -2,6 +2,7 @@
 import { errorResult, jsonResult } from '../types.js';
 import { getMemoryIndexManager } from '../../memory/manager.js';
 import type { MemorySearchConfig } from '../../memory/types.js';
+import { getMemoryPath } from '../../utils/path.js';
 
 export interface GrepParams {
   query: string;           // 搜索内容
@@ -43,14 +44,14 @@ let grepManager: ReturnType<typeof getMemoryIndexManager> | null = null;
 
 async function getGrepManager() {
   if (!grepManager) {
-    const workspaceDir = process.cwd();
+    const workspaceDir = getMemoryPath();
     grepManager = getMemoryIndexManager({
       agentId: 'grep',
       workspaceDir,
       config: {
         ...GREP_MEMORY_CONFIG,
         sources: ['memory'],
-        extraPaths: ['storage/workspace'],
+        extraPaths: ['runtime/workspace'],
       },
     });
   }
@@ -81,7 +82,7 @@ export function createGrepTool() {
       type: 'object',
       properties: {
         query: { type: 'string', description: 'The search query (supports natural language)' },
-        path: { type: 'string', description: 'Directory path to search in (default: workspace)', default: 'storage/workspace' },
+        path: { type: 'string', description: 'Directory path to search in (default: workspace)', default: 'runtime/workspace' },
         maxResults: { type: 'number', description: 'Maximum number of results', default: 10 },
         mode: { type: 'string', description: 'Search mode: semantic (vector) or exact (regex)', enum: ['semantic', 'exact'], default: 'semantic' },
       },

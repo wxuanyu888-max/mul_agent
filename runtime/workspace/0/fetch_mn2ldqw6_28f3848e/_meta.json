@@ -1,0 +1,10 @@
+{
+  "url": "https://httpbin.org/html",
+  "operation": "read",
+  "status": 200,
+  "contentType": "text/html; charset=utf-8",
+  "type": "html",
+  "category": "webpage",
+  "fetchedAt": "2026-03-23T02:54:09.511Z",
+  "prompt": null
+}

@@ -2,6 +2,7 @@
 import { jsonResult, errorResult } from "../types.js";
 import { getMemoryIndexManager } from "../../memory/manager.js";
 import type { MemorySearchConfig } from "../../memory/types.js";
+import { getMemoryPath } from "../../utils/path.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -78,7 +79,7 @@ export function createMemoryTool() {
     }) => {
       try {
         const { action, agentId = "core_brain" } = params;
-        const workspaceDir = process.cwd();
+        const workspaceDir = getMemoryPath();
 
         switch (action) {
           case "search": {

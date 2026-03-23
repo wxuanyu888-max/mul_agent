@@ -13,7 +13,7 @@ import { getMemoryIndexManager } from './manager.js';
 import { getMemoryPersistence } from './persistence.js';
 
 const DEFAULT_AGENT_ID = 'core_brain';
-const DEFAULT_WORKSPACE_DIR = 'storage/memory';
+const DEFAULT_WORKSPACE_DIR = 'memory/memory';
 
 // Default memory search configuration
 const DEFAULT_MEMORY_CONFIG: MemorySearchConfig = {

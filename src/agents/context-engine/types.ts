@@ -47,7 +47,7 @@ export const DEFAULT_COMPACTION_CONFIG: Required<CompactionConfig> = {
   minResultLengthForCompact: 100,
   summaryMaxTokens: 2000,
   preserveSystem: true,
-  transcriptDir: '.transcripts',
+  transcriptDir: 'storage/runtime/transcripts',
 };
 
 /**

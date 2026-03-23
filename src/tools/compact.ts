@@ -57,7 +57,7 @@ export function createCompactTool() {
         const config: CompactionConfig = {
           autoCompactThreshold: params?.config?.autoCompactThreshold ?? 50000,
           keepRecentResults: params?.config?.keepRecentResults ?? 3,
-          transcriptDir: params?.config?.transcriptDir ?? '.transcripts',
+          transcriptDir: params?.config?.transcriptDir ?? 'storage/runtime/transcripts',
         };
 
         // 执行手动压缩

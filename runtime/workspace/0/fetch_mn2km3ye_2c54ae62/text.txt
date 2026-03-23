@@ -1,0 +1,782 @@
+TypeScript 教程 | 菜鸟教程
+
+ 
+
+ 
+ 
+
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+
+ 菜鸟教程 -- 学的不仅是技术，更是梦想！
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+
+ 
+ 
+首页
+ 
+HTML
+ 
+JavaScript
+
+ 
+CSS
+ 
+Vue
+ 
+React
+ 
+ 
+Python3
+ 
+ 
+Java
+ 
+C
+ 
+C++
+ 
+C#
+ 
+AI
+ 
+Go
+ 
+SQL
+ 
+Linux
+ 
+VS Code
+ 
+ 
+ 
+Bootstrap
+ 
+Git
+ 
+本地书签
+ 
+ 
+ 
+ 
+首页
+ 
+HTML
+ 
+CSS
+ 
+JS
+ 
+本地书签
+ 
+Search 
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+
+ 
+ 
+Python3 教程 
+ 
+Python2 教程 
+ 
+ 
+ 
+Vue3 教程 
+ 
+vue2 教程 
+ 
+
+ 
+ 
+Bootstrap3 教程 
+ 
+Bootstrap4 教程 
+ 
+Bootstrap5 教程 
+ 
+Bootstrap2 教程 
+ 
+ 
+ 
+机器学习 
+ 
+PyTorch 教程 
+ 
+TensorFlow 教程 
+ 
+Sklearn 教程 
+ 
+NLP 教程 
+ 
+AI Agent 
+ 
+Ollama 教程 
+ 
+ 
+ 
+ 
+
+ 
+ 
+
+ 
+
+ 
+
+ 
+ 
+TypeScript 教程
+ 
+ 
+
+ 
+ 
+
+ 
+
+ 
+ TypeScript 教程 
+ 
+ TypeScript 安装 
+ TypeScript 特性 
+ TypeScript 基础语法 
+ TypeScript 基本结构 
+ TypeScript 基础类型 
+ 
+ TypeScript 变量声明 
+ 
+ TypeScript 运算符 
+ 
+ TypeScript 条件语句 
+ 
+ TypeScript 循环 
+ 
+ TypeScript 函数 
+ 
+ TypeScript Number 
+ 
+ TypeScript String 
+ 
+ TypeScript Array(数组) 
+ TypeScript Map 对象 
+ TypeScript 元组 
+ 
+ TypeScript 联合类型 
+ 
+ TypeScript 接口 
+ 
+ TypeScript 类 
+ 
+ TypeScript 对象 
+ TypeScript 泛型 
+ TypeScript 命名空间 
+ 
+ TypeScript 模块 
+ 
+ TypeScript 声明文件 
+ 
+ TypeScript 测验 
+ 
+ 
+ 
+
+ 
+
+ 
+ 
+ 
+
+ 
+ 
+
+ 
+ 
+ 
+ TypeScript 安装 
+ 
+
+ 
+ 
+
+ 
+ 
+
+ 
+ TypeScript 教程
+
+
+
+
+
+
+
+
+TypeScript 是 JavaScript 的一个超集，支持 ECMAScript 6 标准（ES6 教程）。
+
+TypeScript 由微软开发的自由和开源的编程语言，在 JavaScript 的基础上增加了静态类型检查的超集。
+
+TypeScript 设计目标是开发大型应用，它可以编译成纯 JavaScript，编译出来的 JavaScript 可以运行在任何浏览器上。
+
+语言特性
+
+TypeScript 是一种给 JavaScript 添加特性的语言扩展，增加的功能包括：
+
+
+类型批注和编译时类型检查
+
+类型推断
+
+类型擦除
+
+接口
+
+枚举
+
+Mixin
+
+泛型编程
+
+名字空间
+
+元组
+
+Await
+
+以下功能是从 ECMA 2015 反向移植而来：
+
+
+类
+
+模块
+
+lambda 函数的箭头语法
+
+可选参数以及默认参数
+
+JavaScript 与 TypeScript 的区别
+
+TypeScript 是 JavaScript 的超集，扩展了 JavaScript 的语法，因此现有的 JavaScript 代码可与 TypeScript 一起工作无需任何修改，TypeScript 通过类型注解提供编译时的静态类型检查。
+
+
+TypeScript 可处理已有的 JavaScript 代码，并只对其中的 TypeScript 代码进行编译。
+
+
+ 
+
+ 
+ 
+
+ 
+
+ 
+ 
+
+
+第一个 TypeScript 实例
+
+以下实例我们使用 TypeScript 来输出
+ Hello World!:
+
+
+实例
+
+
+
+const
+ 
+hello
+ : 
+string
+ = 
+&quot;
+Hello World!
+&quot;
+
+console
+.
+log
+(
+hello
+)
+
+
+
+尝试一下 »
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ AI 思考中...
+ 
+
+ 
+ 
+
+ 
+ 
+ 
+ TypeScript 安装 
+ 
+
+ 
+ 
+
+ 
+
+ 
+
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+ 
+ 
+ 
+ 点我分享笔记
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+取消
+ 
+ 
+
+ 
+
+ 
+ 
+
+ 
+
+
+ 分享笔记
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+昵称
+昵称 (必填)
+ 
+邮箱
+邮箱 (必填)
+ 
+引用地址
+引用地址
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+ 
+
+
+
+
+
+
+
+ 
+ 
+
+ 
+
+ 分类导航
+ 
+ 
+
+ 
+ 
+
+ 
+ HTML / CSS
+HTML 教程
+HTML5 教程
+CSS 教程
+CSS3 教程
+Tailwind CSS 教程
+Bootstrap4 教程
+Bootstrap5 教程
+Font Awesome 教程
+Foundation 教程
+ JavaScript
+JavaScript 教程
+HTML DOM 教程
+jQuery 教程
+AngularJS 教程
+AngularJS2 教程
+Vue.js 教程
+Vue3 教程
+React 教程
+Next.js 教程
+TypeScript 教程
+jQuery UI 教程
+jQuery EasyUI 教程
+Node.js 教程
+Electron 教程
+Playwright 教程
+AJAX 教程
+JSON 教程
+Echarts 教程
+Chart.js 教程
+Highcharts 教程
+Google 地图 教程
+ 服务端
+Python 教程
+Python2.x 教程
+Linux 教程
+Docker 教程
+Ruby 教程
+Java 教程
+C 教程
+C++ 教程
+Perl 教程
+Servlet 教程
+JSP 教程
+Lua 教程
+Rust 教程
+Zig 教程
+Scala 教程
+Go 教程
+PHP 教程
+数据结构与算法
+Django 教程
+FastAPI 教程
+Flask 教程
+Pillow 教程
+Zookeeper 教程
+设计模式
+Python 设计模式
+正则表达式
+Maven 教程
+CMake 教程
+Verilog 教程
+ASP 教程
+AppML 教程
+VBScript 教程
+ 数据库
+SQL 教程
+MySQL 教程
+PostgreSQL 教程
+SQLite 教程
+MongoDB 教程
+Redis 教程
+Memcached 教程
+ AI & 数据分析
+Python 教程
+NumPy 教程
+Pandas 教程
+Matplotlib 教程
+Scipy 教程
+Pytorch 教程
+TensorFlow 教程
+Ollama 教程
+机器 教程
+Jupyter Notebook 教程
+AI Agent(智能体)
+Claude Code
+Codex 教程
+scikit-learn 教程
+R 教程
+OpenCV 教程
+NLP 教程
+Selenium 教程
+Julia 教程
+量化交易
+Dash 教程
+ 移动端
+Android 教程
+Swift 教程
+jQuery Mobile 教程
+ionic 教程
+Kotlin 教程
+ 开发工具
+VS Code 教程
+PyCharm 教程
+Swagger 教程
+RESTful API 教程
+Eclipse 教程
+Git 教程
+Svn 教程
+Markdown 教程
+ XML 教程
+XML 教程
+DTD 教程
+XML DOM 教程
+XSLT 教程
+XPath 教程
+XQuery 教程
+XLink 教程
+XPointer 教程
+XML Schema 教程
+XSL-FO 教程
+SVG 教程
+ ASP.NET
+ASP.NET 教程
+C# 教程
+PowerShell 教程
+Web Pages 教程
+Razor 教程
+MVC 教程
+Web Forms 教程
+ Web Service
+Web Service 教程
+WSDL 教程
+SOAP 教程
+RSS 教程
+RDF 教程
+ 网站建设
+HTTP 教程
+网站建设指南
+浏览器信息
+网络协议
+网站主机教程
+TCP/IP 教程
+W3C 教程
+网站品质 
+ 
+ 
+ 
+ 
+
+ 
+ 
+
+ 
+
+ Advertisement
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+
+ 
+ 
+ 在线实例
+ 
+ 
+ &middot;HTML 实例
+ 
+ 
+ &middot;CSS 实例
+ 
+ 
+ &middot;JavaScript 实例
+ 
+ 
+ &middot;Ajax 实例
+ 
+ 
+ &middot;jQuery 实例
+ 
+ 
+ &middot;XML 实例
+ 
+ 
+ &middot;Java 实例
+ 
+ 
+ 
+ 
+ 
+ 字符集&工具
+ 
+ 
+ &middot; HTML 字符集设置
+ 
+ 
+ &middot; HTML ASCII 字符集
+ 
+ 
+ &middot; JS 混淆/加密
+ 
+ 
+ &middot; PNG/JPEG 图片压缩
+ 
+ 
+ &middot; HTML 拾色器
+ 
+ 
+ &middot; JSON 格式化工具
+ 
+ 
+ &middot; 随机数生成器
+ 
+ 
+ 
+ 
+ 最新更新
+ 
+ 
+ &middot;
+ OpenClaw 快速上手
+ 
+ 
+ &middot;
+ OpenClaw 卸载指南
+ 
+ 
+ &middot;
+ OpenClaw Skills
+ 
+ 
+ &middot;
+ QoderWork 教程
+ 
+ 
+ &middot;
+ Lua 编辑器
+ 
+ 
+ &middot;
+ CC Switch 一键...
+ 
+ 
+ &middot;
+ Codex 进阶使用技巧
+ 
+ 
+ 
+ 
+ 站点信息
+ 
+ 
+ &middot;
+ 意见反馈
+ 
+ 
+ &middot;
+ 免责声明
+ 
+ 
+ &middot;
+ 关于我们
+ 
+ 
+ &middot;
+ 文章归档
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+
+ 关注微信
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ Copyright &copy; 2013-2026 菜鸟教程&nbsp;
+ runoob.com All Rights Reserved. 备案号：闽ICP备15012807号-1
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+
+ 微信关注

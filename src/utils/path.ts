@@ -33,14 +33,20 @@ export function getProjectRoot(): string {
  * Storage directory names
  */
 export const STORAGE_DIRS = {
-  SESSIONS: 'sessions',
-  TASKS: 'tasks',
-  MEMORY: 'memory',
-  PROMPTS: 'prompts',
-  LOGS: 'logs',
-  WORKSPACE: 'workspace',
-  CHECKPOINTS: 'checkpoints',
-  CRON_JOBS: 'cron-jobs',
+  SESSIONS: 'agent/sessions',
+  TASKS: 'agent/sessions', // tasks 在 session 目录下
+  MEMORY: 'memory/memory',
+  PROMPTS: 'config/prompts',
+  LOGS: 'runtime/logs',
+  WORKSPACE: 'agent/sessions', // session workspace 在 session 目录下
+  GLOBAL_WORKSPACE: 'runtime/workspace', // 全局 workspace（工具默认使用）
+  CHECKPOINTS: 'runtime/checkpoints',
+  SKILLS: 'config/skills',
+  TEAMMATES: 'config/teammates',
+  LLM_LOGS: 'runtime/llm_logs',
+  LLM_USE: 'runtime/llm_use',
+  CONFIG: 'config',
+  CRON_JOBS: 'agent/cron-jobs', // 定时任务（agent 级别全局）
 } as const;
 
 /**
@@ -86,10 +92,29 @@ export function getLogsPath(...segments: string[]): string {
 }
 
 /**
- * Get workspace storage path
+ * Get session workspace storage path (在 session 目录下)
  */
+export function getSessionWorkspacePath(sessionId: string, ...segments: string[]): string {
+  return getStoragePath(STORAGE_DIRS.SESSIONS, sessionId, 'workspace', ...segments);
+}
+
+/**
+ * Get session tasks storage path (在 session 目录下)
+ */
+export function getSessionTasksPath(sessionId: string, ...segments: string[]): string {
+  return getStoragePath(STORAGE_DIRS.SESSIONS, sessionId, 'tasks', ...segments);
+}
+
+/**
+ * Get global workspace storage path (运行时全局工作区)
+ */
+export function getGlobalWorkspacePath(...segments: string[]): string {
+  return getStoragePath(STORAGE_DIRS.GLOBAL_WORKSPACE, ...segments);
+}
+
+// 保留原有函数用于向后兼容
 export function getWorkspacePath(...segments: string[]): string {
-  return getStoragePath(STORAGE_DIRS.WORKSPACE, ...segments);
+  return getGlobalWorkspacePath(...segments);
 }
 
 /**

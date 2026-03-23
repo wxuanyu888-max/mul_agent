@@ -7,7 +7,6 @@
 // 3. 脏标记 - 仅写入变更的数据
 // 4. 定期刷新 - 后台定时保存
 
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
   type Session,
@@ -19,7 +18,9 @@ import {
   type QuerySessionsOptions,
   type SessionStatus,
 } from './types.js';
-import { getSessionsPath } from '../utils/path.js';
+import { getSessionsPath, getSessionWorkspacePath, getSessionTasksPath } from '../utils/path.js';
+import { StorageCache } from '../storage/cache/cache.js';
+import { JsonStorageBackend } from '../storage/backend/json.js';
 import { withFileLock, atomicReadJson, atomicWriteJson, ensureDir } from '../utils/file-lock.js';
 
 const STORAGE_DIR = getSessionsPath();
@@ -33,13 +34,6 @@ function generateSessionId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 9);
   return `${timestamp}_${random}`;
-}
-
-/**
- * 确保存储目录存在
- */
-async function ensureStorageDir(): Promise<void> {
-  await ensureDir(STORAGE_DIR);
 }
 
 /**
@@ -57,218 +51,199 @@ function getIndexPath(): string {
 }
 
 // ============================================================================
-// 缓存和批量写入
+// SessionCache - 继承 StorageCache
 // ============================================================================
 
-interface CacheEntry {
+interface SessionCacheEntry {
   session: Session;
-  dirty: boolean;
-  pinned: boolean; // 防止被驱逐
+  metadata: SessionMetadata;
 }
 
-class SessionCache {
-  private cache = new Map<string, CacheEntry>();
-  private indexCache: Record<string, SessionMetadata> = {};
-  private flushTimer: NodeJS.Timeout | null = null;
-  private pendingFlush: Set<string> = new Set();
+class SessionCache extends StorageCache<Session> {
+  private metadataCache = new Map<string, SessionMetadata>();
+  private backend: JsonStorageBackend;
+
+  constructor(backend: JsonStorageBackend) {
+    super({ maxSize: MAX_CACHE_SIZE, flushInterval: FLUSH_INTERVAL_MS });
+    this.backend = backend;
+  }
 
   /**
-   * 获取会话（优先从缓存）
+   * 从磁盘加载会话
+   */
+  async loadFromDisk(sessionId: string): Promise<Session | null> {
+    // 直接使用 atomicReadJson 以兼容测试 mock
+    const session = await atomicReadJson<Session>(getSessionPath(sessionId));
+    return session;
+  }
+
+  /**
+   * 覆盖 get 方法：优先从缓存，没有则从磁盘加载
    */
   async get(sessionId: string): Promise<Session | null> {
-    const entry = this.cache.get(sessionId);
-    if (entry) {
-      return entry.session;
+    const cached = await super.get(sessionId);
+    if (cached) {
+      return cached;
     }
 
     // 从磁盘读取
-    const session = await atomicReadJson<Session>(getSessionPath(sessionId));
+    const session = await this.loadFromDisk(sessionId);
     if (session) {
-      this.set(session, false);
+      this.addSession(session, false);
       return session;
     }
     return null;
   }
 
   /**
-   * 设置会话
+   * 添加会话：同时更新 metadata 缓存
    */
-  set(session: Session, dirty = true): void {
-    const entry = this.cache.get(session.id);
-    if (entry) {
-      entry.session = session;
-      entry.dirty = entry.dirty || dirty;
-    } else {
-      // 缓存满了，驱逐一个不脏的条目
-      if (this.cache.size >= MAX_CACHE_SIZE) {
-        this.evictOne();
-      }
-      this.cache.set(session.id, { session, dirty, pinned: false });
-    }
+  addSession(session: Session, dirty = true): void {
+    super.set(session.id, session, dirty);
 
-    if (dirty) {
-      this.pendingFlush.add(session.id);
-    }
-  }
-
-  /**
-   * 驱逐一个不脏的缓存条目
-   */
-  private evictOne(): void {
-    for (const [id, entry] of this.cache) {
-      if (!entry.dirty && !entry.pinned) {
-        this.cache.delete(id);
-        return;
-      }
-    }
-    // 如果所有条目都是脏的或被钉住，驱逐最早的非钉住条目
-    for (const [id, entry] of this.cache) {
-      if (!entry.pinned) {
-        this.cache.delete(id);
-        return;
-      }
-    }
-  }
-
-  /**
-   * 标记会话为脏
-   */
-  markDirty(sessionId: string): void {
-    const entry = this.cache.get(sessionId);
-    if (entry) {
-      entry.dirty = true;
-    }
-    this.pendingFlush.add(sessionId);
+    // 同时更新 metadata 缓存
+    const metadata: SessionMetadata = {
+      id: session.id,
+      label: session.label,
+      parentId: session.parentId,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      status: session.status,
+      config: session.config,
+    };
+    this.metadataCache.set(session.id, metadata);
   }
 
   /**
    * 删除会话
    */
   delete(sessionId: string): void {
-    this.cache.delete(sessionId);
-    this.pendingFlush.delete(sessionId);
-    delete this.indexCache[sessionId];
+    super.delete(sessionId);
+    this.metadataCache.delete(sessionId);
   }
 
   /**
-   * 刷新脏会话到磁盘
+   * 获取 metadata（从缓存或磁盘）
+   */
+  async getMetadata(sessionId: string): Promise<SessionMetadata | null> {
+    const cached = this.metadataCache.get(sessionId);
+    if (cached) {
+      return cached;
+    }
+
+    const index = await this.loadIndex();
+    const metadata = index[sessionId];
+    if (metadata) {
+      this.metadataCache.set(sessionId, metadata);
+    }
+    return metadata ?? null;
+  }
+
+  /**
+   * 获取所有 metadata
+   */
+  async getAllMetadata(): Promise<Record<string, SessionMetadata>> {
+    return this.loadIndex();
+  }
+
+  /**
+   * 加载索引
+   */
+  private async loadIndex(): Promise<Record<string, SessionMetadata>> {
+    // 直接使用 atomicReadJson 以兼容测试 mock
+    const data = await atomicReadJson<Record<string, SessionMetadata>>(getIndexPath());
+    return data || {};
+  }
+
+  /**
+   * 覆盖 flush 方法：刷新会话到磁盘
    */
   async flush(): Promise<void> {
-    if (this.pendingFlush.size === 0) {
+    const dirtyEntries = this.getDirtyEntries();
+    if (dirtyEntries.size === 0) {
       return;
     }
 
-    await ensureStorageDir();
+    // 确保目录存在
+    await ensureDir(STORAGE_DIR);
 
     // 批量写入会话文件
     const promises: Promise<void>[] = [];
-    for (const sessionId of this.pendingFlush) {
-      const entry = this.cache.get(sessionId);
-      if (entry && entry.dirty) {
-        promises.push(
-          atomicWriteJson(getSessionPath(sessionId), entry.session)
-            .then(() => {
-              entry.dirty = false;
-            })
-        );
-      }
+    for (const [id, session] of dirtyEntries) {
+      promises.push(
+        atomicWriteJson(getSessionPath(id), session).then(() => {
+          this.markDirty(id); // 标记为已刷新
+        })
+      );
     }
 
     // 同时刷新索引
     promises.push(this.flushIndex());
 
     await Promise.all(promises);
-    this.pendingFlush.clear();
   }
 
   /**
    * 刷新索引到磁盘
    */
-  async flushIndex(): Promise<void> {
-    await atomicWriteJson(getIndexPath(), this.indexCache);
-  }
-
-  /**
-   * 更新索引缓存
-   */
-  updateIndex(sessionId: string, metadata: SessionMetadata): void {
-    this.indexCache[sessionId] = metadata;
-    this.pendingFlush.add(sessionId); // 索引也需要刷新
-  }
-
-  /**
-   * 获取索引（从缓存或磁盘）
-   */
-  async getIndex(): Promise<Record<string, SessionMetadata>> {
-    if (Object.keys(this.indexCache).length === 0) {
-      const data = await atomicReadJson<Record<string, SessionMetadata>>(getIndexPath());
-      this.indexCache = data || {};
+  private async flushIndex(): Promise<void> {
+    const index: Record<string, SessionMetadata> = {};
+    for (const [id, metadata] of this.metadataCache) {
+      index[id] = metadata;
     }
-    return this.indexCache;
+    await atomicWriteJson(getIndexPath(), index);
   }
 
   /**
-   * 启动定期刷新
+   * 更新 metadata
    */
-  startFlushTimer(): void {
-    if (this.flushTimer) {
-      return;
+  updateMetadata(sessionId: string, metadata: SessionMetadata): void {
+    this.metadataCache.set(sessionId, metadata);
+    this.markDirty(sessionId);
+  }
+
+  /**
+   * 加载所有 metadata 到缓存
+   */
+  async loadAllMetadata(): Promise<void> {
+    const index = await this.loadIndex();
+    for (const [id, metadata] of Object.entries(index)) {
+      this.metadataCache.set(id, metadata);
     }
-    this.flushTimer = setInterval(() => {
-      this.flush().catch(console.error);
-    }, FLUSH_INTERVAL_MS);
-  }
-
-  /**
-   * 停止定期刷新并执行最终保存
-   */
-  async stop(): Promise<void> {
-    if (this.flushTimer) {
-      clearInterval(this.flushTimer);
-      this.flushTimer = null;
-    }
-    await this.flush();
-  }
-
-  /**
-   * 缓存大小
-   */
-  size(): number {
-    return this.cache.size;
-  }
-
-  /**
-   * 待刷新数量
-   */
-  pendingCount(): number {
-    return this.pendingFlush.size;
   }
 }
 
-// 全局缓存实例
-const globalCache = new SessionCache();
+// ============================================================================
+// 初始化后端和缓存
+// ============================================================================
+
+const backend = new JsonStorageBackend({ baseDir: STORAGE_DIR });
+const globalCache = new SessionCache(backend);
 
 // 启动定期刷新
-globalCache.startFlushTimer();
+globalCache.start();
+
+// 启动时加载索引到缓存
+globalCache.loadAllMetadata().catch(console.error);
 
 /**
  * 读取 Session 索引
  */
 async function readIndex(): Promise<Record<string, SessionMetadata>> {
-  return globalCache.getIndex();
+  return globalCache.getAllMetadata();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function writeIndex(index: Record<string, SessionMetadata>): Promise<void> {
-  globalCache.updateIndex('_all_', index as unknown as SessionMetadata);
+  for (const [id, metadata] of Object.entries(index)) {
+    globalCache.updateMetadata(id, metadata);
+  }
 }
 
 /**
  * 创建新 Session
  */
 export async function createSession(options?: CreateSessionOptions): Promise<Session> {
-  await ensureStorageDir();
-
   const now = Date.now();
   const sessionId = options?.id || generateSessionId();
 
@@ -298,10 +273,10 @@ export async function createSession(options?: CreateSessionOptions): Promise<Ses
   };
 
   // 保存到缓存（标记为脏，等待定期刷新）
-  globalCache.set(session, true);
+  globalCache.addSession(session, true);
 
   // 立即写入以确保持久化（create 是关键操作）
-  await atomicWriteJson(getSessionPath(sessionId), session);
+  await backend.write(getSessionPath(sessionId), session);
 
   // 使用文件锁更新索引，防止并发冲突
   await withFileLock(getIndexPath(), async () => {
@@ -315,10 +290,12 @@ export async function createSession(options?: CreateSessionOptions): Promise<Ses
       status: session.status,
       config: session.config,
     };
-    await atomicWriteJson(getIndexPath(), index);
-    // 同时更新缓存
-    globalCache.updateIndex(sessionId, index[sessionId]);
+    await backend.write(getIndexPath(), index);
   });
+
+  // 创建 session 专属目录：workspace 和 tasks
+  await ensureDir(getSessionWorkspacePath(sessionId));
+  await ensureDir(getSessionTasksPath(sessionId));
 
   return session;
 }
@@ -347,7 +324,7 @@ export async function updateSession(
   };
 
   // 更新缓存（标记为脏）
-  globalCache.set(updated, true);
+  globalCache.addSession(updated, true);
 
   // 使用文件锁更新索引，防止并发冲突
   await withFileLock(getIndexPath(), async () => {
@@ -362,7 +339,7 @@ export async function updateSession(
         status: updated.status,
         config: updated.config,
       };
-      await atomicWriteJson(getIndexPath(), index);
+      await backend.write(getIndexPath(), index);
     }
   });
 
@@ -471,8 +448,18 @@ export async function getActiveSessions(): Promise<SessionMetadata[]> {
  */
 export async function deleteSession(sessionId: string): Promise<boolean> {
   try {
+    // 先检查 session 是否存在
+    const existing = await globalCache.get(sessionId);
+    if (!existing) {
+      // 检查磁盘上是否存在
+      const diskSession = await atomicReadJson<Session>(getSessionPath(sessionId));
+      if (!diskSession) {
+        return false;
+      }
+    }
+
     await globalCache.flush(); // 先刷新以确保没有待写入的数据
-    await fs.unlink(getSessionPath(sessionId));
+    await backend.delete(getSessionPath(sessionId));
 
     // 使用文件锁删除索引，防止并发冲突
     await withFileLock(getIndexPath(), async () => {
@@ -510,10 +497,7 @@ export async function flushSessions(): Promise<void> {
  * 获取缓存统计信息
  */
 export function getCacheStats(): { size: number; pending: number } {
-  return {
-    size: globalCache.size(),
-    pending: globalCache.pendingCount(),
-  };
+  return globalCache.getStats();
 }
 
 /**

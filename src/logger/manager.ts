@@ -62,6 +62,42 @@ function generateLogId(): string {
 }
 
 /**
+ * 获取带序号的日志文件名
+ */
+function getLogFileName(date: string, rotationIndex: number): string {
+  if (rotationIndex === 0) {
+    return `${date}.log`;
+  }
+  return `${date}_${rotationIndex}.log`;
+}
+
+/**
+ * 查找当前日志文件的旋转索引
+ */
+async function getCurrentRotationIndex(logDir: string, date: string): Promise<number> {
+  try {
+    const files = await fs.readdir(logDir);
+    const dateFiles = files
+      .filter((f) => f.startsWith(date))
+      .filter((f) => f.endsWith('.log'));
+
+    let maxIndex = 0;
+    for (const file of dateFiles) {
+      const match = file.match(/^(\d{4}-\d{2}-\d{2})(?:_(\d+))?\.log$/);
+      if (match) {
+        const index = match[2] ? parseInt(match[2], 10) : 0;
+        if (index > maxIndex) {
+          maxIndex = index;
+        }
+      }
+    }
+    return maxIndex;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * 日志级别优先级
  */
 const LEVEL_PRIORITY: Record<LogLevel, number> = {
@@ -127,6 +163,20 @@ export class Logger {
   }
 
   /**
+   * 获取 maxFiles 配置值
+   */
+  private getMaxFiles(): number {
+    return this.config.maxFiles ?? 10;
+  }
+
+  /**
+   * 获取 maxFileSize 配置值
+   */
+  private getMaxFileSize(): number {
+    return this.config.maxFileSize ?? (10 * 1024 * 1024); // 默认 10MB
+  }
+
+  /**
    * 写入日志到文件
    */
   private async write(entry: LogEntry): Promise<void> {
@@ -134,10 +184,76 @@ export class Logger {
     await fs.mkdir(logDir, { recursive: true });
 
     const date = new Date(entry.timestamp).toISOString().split('T')[0];
-    const logFile = path.join(logDir, `${date}.log`);
+
+    // 检查是否需要轮转
+    await this.rotateIfNeeded(logDir, date);
 
     const content = this.formatEntry(entry);
-    await fs.appendFile(logFile, content);
+
+    // 尝试写入，如果失败则创建新文件
+    let rotationIndex = 0;
+    let logFile = path.join(logDir, getLogFileName(date, rotationIndex));
+
+    while (true) {
+      try {
+        await fs.appendFile(logFile, content);
+        break;
+      } catch (error) {
+        // 文件可能不存在，尝试创建
+        try {
+          await fs.writeFile(logFile, content);
+          break;
+        } catch {
+          // 增加轮转索引重试
+          rotationIndex++;
+          if (rotationIndex > this.getMaxFiles()) {
+            throw new Error('Too many log rotations');
+          }
+          logFile = path.join(logDir, getLogFileName(date, rotationIndex));
+        }
+      }
+    }
+  }
+
+  /**
+   * 检查并执行日志轮转
+   */
+  private async rotateIfNeeded(logDir: string, date: string): Promise<void> {
+    const rotationIndex = await getCurrentRotationIndex(logDir, date);
+    const logFile = path.join(logDir, getLogFileName(date, rotationIndex));
+
+    try {
+      const stats = await fs.stat(logFile);
+      if (stats.size >= this.getMaxFileSize()) {
+        // 清理旧文件
+        await this.cleanOldLogs(logDir, date);
+      }
+    } catch {
+      // 文件不存在，不需要轮转
+    }
+  }
+
+  /**
+   * 清理旧的日志文件
+   */
+  private async cleanOldLogs(logDir: string, currentDate: string): Promise<void> {
+    try {
+      const files = await fs.readdir(logDir);
+      const dateFiles = files
+        .filter((f) => f.startsWith(currentDate))
+        .filter((f) => f.endsWith('.log'))
+        .sort();
+
+      const maxFiles = this.getMaxFiles();
+      // 如果文件数量超过 maxFiles，删除最旧的
+      while (dateFiles.length >= maxFiles) {
+        const oldestFile = dateFiles.shift()!;
+        const oldestPath = path.join(logDir, oldestFile);
+        await fs.unlink(oldestPath);
+      }
+    } catch {
+      // 忽略错误
+    }
   }
 
   /**

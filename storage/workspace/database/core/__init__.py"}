@@ -1,9 +1,0 @@
-"""
-Core module for database system.
-"""
-
-from .page import Page
-from .table import Table
-from .database import Database
-
-__all__ = ['Page', 'Table', 'Database']

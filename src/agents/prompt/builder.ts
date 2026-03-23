@@ -1,7 +1,7 @@
 /**
  * 提示词构建器
  *
- * 从 storage/prompts 目录加载模板并动态组装系统提示词
+ * 从 config/prompts 目录加载模板并动态组装系统提示词
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -17,7 +17,7 @@ import type {
 import type { LoadedItem } from '../types.js';
 
 // 提示词模板目录 (使用 process.cwd() 获取项目根目录)
-const PROMPTS_DIR = join(process.cwd(), 'storage/prompts');
+const PROMPTS_DIR = join(process.cwd(), 'config/prompts');
 
 /**
  * 加载提示词模板
@@ -172,7 +172,7 @@ function buildDynamicVariables(context: BuildContext): Record<string, string> {
 
   // 格式化工作目录相关变量
   const sessionWorkspaceDir = config.sessionId
-    ? join('storage/workspace', config.sessionId).replace(/\\/g, '/')
+    ? join('agent/sessions', config.sessionId, 'workspace').replace(/\\/g, '/')
     : '';
 
   // 格式化生成的文件列表

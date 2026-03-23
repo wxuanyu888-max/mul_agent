@@ -1,0 +1,41 @@
+TypeScript: JavaScript With Syntax For Types.
+TypeScript
+TypeScript is JavaScript with syntax for types.
+TypeScript is a strongly typed programming language that builds on JavaScript, giving you better tooling at any scale.
+Try TypeScript Now
+TypeScript 5.9 is now available
+What is TypeScript?
+TypeScript adds additional syntax to JavaScript to support a tighter integration with your editor. Catch errors early in your editor.
+TypeScript code converts to JavaScript, which runs anywhere JavaScript runs: In a browser, on Node.js, Deno, Bun and in your apps.
+TypeScript understands JavaScript and uses type inference to give you great tooling without additional code.
+Learn the language
+Install TypeScript
+Adopt TypeScript Gradually
+Let&#x27;s take this incorrect JavaScript code, and see how TypeScript can catch mistakes in your editor.
+Cannot find name 'orr'.
+Cannot find name 'orr'.
+the param is arr, not orr!
+.length: number' >length
+.length: number' >length
+.slice(start?: number | undefined, end?: number | undefined): string[]' >slice
+TypeScript adds natural syntax for providing types
+TypeScript file
+Describe the shape of objects and functions in your code.
+number
+version
+TypeScript becomes JavaScript via the delete key.
+TypeScript file.
+TypeScript Testimonials
+First, we were surprised by the number of small bugs we found when converting our code.
+Second, we underestimated how powerful the editor integration is.
+TypeScript was such a boon to our stability and sanity that we started using it for all new code within days of starting the conversion.
+Felix Rieseberg at Slack covered the transition of their desktop app from JavaScript to TypeScript in their blogRead
+Open Source with TypeScript
+Voted 2nd most loved programming language in the Stack Overflow 2020 Developer survey
+TypeScript was used by 78% of the 2020 State of JS respondents, with 93% saying they would use it again.
+TypeScript was given the award for “Most Adopted Technology” based on year-on-year growth.
+Learn the language
+Install TypeScript
+Using TypeScript
+Why TypeScript
+@TypeScript

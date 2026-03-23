@@ -23,7 +23,7 @@ import type {
 } from './enhanced-types.js';
 import { getCheckpoint, getSessionCheckpoints } from './manager.js';
 
-const STORAGE_DIR = '/Users/agent/PycharmProjects/mul_agent/storage/checkpoints';
+const STORAGE_DIR = '/Users/agent/PycharmProjects/mul_agent/storage/runtime/checkpoints';
 
 /**
  * 获取分支信息存储路径

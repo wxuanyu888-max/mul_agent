@@ -2,6 +2,7 @@
 import { jsonResult, errorResult } from "../types.js";
 import { getMemoryIndexManager } from "../../memory/manager.js";
 import type { MemorySearchConfig } from "../../memory/types.js";
+import { getMemoryPath } from "../../utils/path.js";
 
 /**
  * 默认的 Memory 配置
@@ -49,7 +50,7 @@ export function createMemoryGetTool() {
     execute: async (_toolCallId: string, params: { path: string; from?: number; lines?: number; agentId?: string }) => {
       try {
         const { path, from = 1, lines = 100, agentId = "core_brain" } = params;
-        const workspaceDir = process.cwd();
+        const workspaceDir = getMemoryPath();
 
         const manager = await getManager(agentId, workspaceDir);
         const result = await manager.readFile({
