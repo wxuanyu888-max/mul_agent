@@ -4,9 +4,12 @@
  * 从 config/prompts 目录加载模板并动态组装系统提示词
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
+
+import { getTasksPath } from '../../utils/path.js';
+import { TOOL_DESCRIPTIONS } from '../../tools/index.js';
 
 import type {
   BuildContext,
@@ -16,8 +19,11 @@ import type {
 } from './types.js';
 import type { LoadedItem } from '../types.js';
 
+// 队友存储目录
+const TEAMMATES_DIR = join(process.cwd(), 'storage', 'teammates');
+
 // 提示词模板目录 (使用 process.cwd() 获取项目根目录)
-const PROMPTS_DIR = join(process.cwd(), 'config/prompts');
+const PROMPTS_DIR = join(process.cwd(), 'storage/config/prompts');
 
 /**
  * 加载提示词模板
@@ -70,7 +76,11 @@ Tool availability:
 
 {{runtime}}
 
-{{documentation}}`,
+{{documentation}}
+
+{{tasks_info}}
+
+{{teammates_info}}`,
     minimal: `{{base}}
 
 ## Tooling
@@ -87,27 +97,27 @@ Tool availability:
  */
 function getBuiltInModule(name: string): string {
   const modules: Record<string, string> = {
-    base: `You are a personal assistant.
+    base: `你是运行在 MulAgent 中的个人助理。
 
-Your goal is to assist users with their tasks by using available tools.`,
-    safety: `## Safety
-- Prioritize safety and human oversight
-- If instructions conflict with safety, pause and ask`,
-    tool_call_style: `## Tool Call Style
-- Use tools by responding with JSON in a \`tool_use\` block`,
-    skills: `## Skills
-Use skills when they apply to the task.`,
-    memory: `## Memory
-Use memory tools to find prior information.`,
-    workspace: `## Workspace
-Your working directory is: {{workspace}}`,
-    heartbeats: `## Heartbeat
-If you receive a heartbeat poll and there is nothing that needs attention, reply exactly:
+你的目标是利用可用工具帮助用户完成任务。`,
+    safety: `## 安全规范
+- 优先考虑安全和人类监督
+- 如果指令与安全冲突，暂停并询问`,
+    tool_call_style: `## 工具调用规范
+- 使用 JSON 格式在 \`tool_use\` 块中调用工具`,
+    skills: `## 可用技能
+使用技能来完成相应任务。`,
+    memory: `## 记忆
+使用记忆工具查找之前的信息。`,
+    workspace: `## 工作空间
+你的工作目录是：{{workspace}}`,
+    heartbeats: `## 心跳
+如果收到心跳轮询且没有需要处理的事项，请回复：
 HEARTBEAT_OK`,
-    runtime: `## Runtime
+    runtime: `## 运行时信息
 {{runtime_info}}`,
-    documentation: `## Documentation
-For more information, consult the documentation.`,
+    documentation: `## 文档
+更多信息请查阅文档。`,
     // 额外的内置模块
     'model-aliases': '',
     sandbox: '',
@@ -153,6 +163,85 @@ export function buildSystemPrompt(context: BuildContext): string {
 }
 
 /**
+ * 加载进行中的任务
+ */
+function loadActiveTasks(): string {
+  try {
+    const tasksDir = getTasksPath();
+
+    if (!existsSync(tasksDir)) {
+      return '';
+    }
+
+    const files = readdirSync(tasksDir).filter(f => f.startsWith('task_') && f.endsWith('.json'));
+
+    if (files.length === 0) {
+      return '';
+    }
+
+    const tasks: string[] = [];
+
+    for (const file of files) {
+      const content = readFileSync(join(tasksDir, file), 'utf-8');
+      const task = JSON.parse(content);
+
+      // 只显示进行中的任务
+      if (task.status === 'pending' || task.status === 'in_progress') {
+        const blockedBy = task.blockedBy?.length > 0 ? ` (blocked by: ${task.blockedBy.join(', ')})` : '';
+        tasks.push(`- [${task.status}] ${task.subject}${blockedBy}`);
+      }
+    }
+
+    if (tasks.length === 0) {
+      return '';
+    }
+
+    return `## Active Tasks\n${tasks.join('\n')}`;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * 加载活跃队友列表
+ */
+function loadActiveTeammates(): string {
+  try {
+    const configPath = join(TEAMMATES_DIR, 'config.json');
+
+    if (!existsSync(configPath)) {
+      return '';
+    }
+
+    const content = readFileSync(configPath, 'utf-8');
+    const data = JSON.parse(content);
+
+    if (!data.teammates || data.teammates.length === 0) {
+      return '';
+    }
+
+    // 只显示非 SHUTDOWN 状态的队友
+    const activeTeammates = data.teammates.filter(
+      (t: { status: string }) => t.status !== 'SHUTDOWN'
+    );
+
+    if (activeTeammates.length === 0) {
+      return '';
+    }
+
+    const teammateList = activeTeammates
+      .map((t: { name: string; role: string; status: string }) =>
+        `- **${t.name}** (${t.role}) [${t.status}]`
+      )
+      .join('\n');
+
+    return `## Active Teammates\n${teammateList}`;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * 构建动态变量
  */
 function buildDynamicVariables(context: BuildContext): Record<string, string> {
@@ -178,30 +267,30 @@ function buildDynamicVariables(context: BuildContext): Record<string, string> {
   // 格式化生成的文件列表
   const generatedFilesList = config.generatedFiles && config.generatedFiles.length > 0
     ? config.generatedFiles.map(f => `- ${f.name}: ${f.path}`).join('\n')
-    : '(none yet)';
+    : '(暂无)';
 
   const workspaceVars = {
     workspace_dir: config.workspaceDir,
-    workspace_session_dir: sessionWorkspaceDir || '(none - using global workspace)',
+    workspace_session_dir: sessionWorkspaceDir || '（无 - 使用全局工作空间）',
     workspace_guidance: config.sessionId
-      ? `You can read, write, and execute files in the session workspace: ${sessionWorkspaceDir}`
-      : 'You can read, write, and execute files in this directory.',
+      ? `你可以在会话工作空间中读取、写入和执行文件：${sessionWorkspaceDir}`
+      : '你可以在此目录中读取、写入和执行文件。',
     workspace_notes: '',
     generated_files: generatedFilesList,
   };
 
   // 格式化沙箱相关变量
   const sandboxVars = {
-    sandbox_info: 'Sandbox Environment',
-    sandbox_container_workspace: 'Container workspace is enabled.',
-    sandbox_workspace_access: 'You have full access to the container filesystem.',
-    sandbox_browser_info: 'Browser automation is available.',
-    sandbox_elevated_info: 'You have elevated privileges.',
+    sandbox_info: '沙箱环境',
+    sandbox_container_workspace: '容器工作空间已启用。',
+    sandbox_workspace_access: '你可以完全访问容器文件系统。',
+    sandbox_browser_info: '浏览器自动化可用。',
+    sandbox_elevated_info: '你拥有提升的权限。',
   };
 
   // 格式化心跳变量
   const heartbeatVars = {
-    heartbeat_prompt: 'If there is nothing that needs attention, reply exactly: HEARTBEAT_OK',
+    heartbeat_prompt: '如果没有需要处理的事项，请回复：HEARTBEAT_OK',
   };
 
   // 格式化模型别名变量
@@ -243,6 +332,12 @@ function buildDynamicVariables(context: BuildContext): Record<string, string> {
   // 格式化上下文文件
   const contextFiles = formatContextFiles(ctx);
 
+  // 加载任务信息
+  const tasksInfo = loadActiveTasks();
+
+  // 加载队友信息
+  const teammatesInfo = loadActiveTeammates();
+
   return {
     // 核心变量
     workspace: loadModule('workspace'),
@@ -276,11 +371,17 @@ function buildDynamicVariables(context: BuildContext): Record<string, string> {
     ...reactionVars,
 
     // 动态变量
-    owner_info: config.ownerInfo || 'Owner: User',
+    owner_info: config.ownerInfo || '授权用户：用户',
     time_info: timeInfo,
     context_files: contextFiles,
     docs_url: config.docsUrl || config.docsPath || '',
     voice: config.voiceConfig || '',
+
+    // 任务变量
+    tasks_info: tasksInfo,
+
+    // 队友变量
+    teammates_info: teammatesInfo,
   };
 }
 
@@ -326,7 +427,7 @@ function loadAllModules(context: BuildContext): Record<string, string> {
 }
 
 /**
- * 格式化工具列表
+ * 格式化工具列表 - 使用统一描述格式
  */
 function formatToolList(tools: ToolInfo[]): string {
   if (tools.length === 0) {
@@ -334,7 +435,12 @@ function formatToolList(tools: ToolInfo[]): string {
   }
 
   return tools
-    .map((t) => `- \`${t.name}\`: ${t.description}`)
+    .map((t) => {
+      // 优先使用 TOOL_DESCRIPTIONS 中的统一格式
+      const unifiedDesc = TOOL_DESCRIPTIONS[t.name];
+      const desc = unifiedDesc || t.description;
+      return `- \`${t.name}\`: ${desc}`;
+    })
     .join('\n');
 }
 
@@ -355,23 +461,23 @@ function formatSkills(skills: SkillInfo[]): string {
   const displaySkills = coreSkills.length > 0 ? coreSkills : skills.slice(0, 3);
 
   const skillList = displaySkills
-    .map((s) => `- \`${s.name}\`: ${s.description} (location: ${s.location})`)
+    .map((s) => `- \`${s.name}\`: ${s.description} (位置: ${s.location})`)
     .join('\n');
 
-  return `## Skills (mandatory)
+  return `## 可用技能
 <available_skills>
 ${skillList}
 </available_skills>
 
-Before replying: scan <available_skills> <description> entries.
+回复前：请扫描 <available_skills> <description> 条目。
 
-- If exactly one skill clearly applies: read its SKILL.md at <location> with \`read\`, then follow it.
-- If multiple could apply: choose the most specific one, then read/follow it.
-- If none clearly apply: do not read any SKILL.md.
+- 如果只有一个技能明显适用：使用 \`read\` 读取其 SKILL.md，然后遵循
+- 如果多个适用：选择最具体的一个，然后读取/遵循
+- 如果没有明显适用的：不要读取任何 SKILL.md
 
-Constraints: never read more than one skill up front; only read after selecting.
+约束：永不一次读取多个 skill；选择后再读取。
 
-When a skill drives external API writes, assume rate limits: prefer fewer larger writes, avoid tight one-item loops, serialize bursts when possible, and respect 429/Retry-After.`;
+当 skill 驱动外部 API 写入时，假设有速率限制：优先选择更少但更大的写入，避免紧凑的单项循环，尽可能序列化突发流量，并遵守 429/Retry-After。`;
 }
 
 /**

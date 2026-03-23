@@ -11,7 +11,7 @@ export function createTeammateSendTool() {
   return {
     label: "Teammate Send",
     name: "teammate_send",
-    description: 'Send a message to a specific teammate. The message will be delivered to their inbox.',
+    description: 'Send a message to a teammate. They will receive it and respond accordingly.',
     parameters: {
       type: 'object',
       properties: {

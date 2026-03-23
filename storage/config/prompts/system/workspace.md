@@ -1,5 +1,3 @@
-# 工作空间
-
 你的工作目录是：{{workspace_dir}}
 
 {{workspace_guidance}}

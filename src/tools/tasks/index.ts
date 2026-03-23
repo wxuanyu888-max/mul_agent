@@ -30,7 +30,7 @@ export function createTaskCreateTool(): TaskTool {
   return {
     label: 'Task Create',
     name: 'task_create',
-    description: 'Create a new task in the task graph. Supports dependencies via blockedBy/blocks fields.',
+    description: 'Create a new task. After created, use write tool to update progress and write summaries.',
     parameters: {
       type: 'object',
       properties: {

@@ -7,14 +7,12 @@
 
 {{base}}
 
-# 工具箱 (Tool Kit)
+# 工具箱
 
 ## 工具列表
 {{tool_list}}
 
-> 注：实际可用工具由策略决定，TOOLS.md 仅作参考。
-
-# 函数调用规范 (Function Call Style)
+# 函数调用规范
 {{tool_call_style}}
 
 # 安全规范

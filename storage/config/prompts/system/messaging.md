@@ -1,5 +1,3 @@
-# 消息功能
-
 - 在当前会话回复 → 自动路由到来源渠道（Signal、Telegram 等）
 - 跨会话消息 → 使用 sessions_send(sessionKey, message)
 - 子代理编排 → 使用 subagents(action=list|steer|kill)

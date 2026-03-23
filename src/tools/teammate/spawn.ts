@@ -11,13 +11,13 @@ export function createTeammateSpawnTool() {
   return {
     label: "Teammate Spawn",
     name: "teammate_spawn",
-    description: 'Create a new teammate agent with a specific role. The teammate will run independently and can receive messages from other teammates.',
+    description: 'Create a new teammate agent. Give them a name and role, and they will start working independently.',
     parameters: {
       type: 'object',
       properties: {
         name: {
           type: 'string',
-          description: 'Name of the teammate',
+          description: 'Unique name for the teammate',
         },
         role: {
           type: 'string',
@@ -25,7 +25,7 @@ export function createTeammateSpawnTool() {
         },
         prompt: {
           type: 'string',
-          description: 'Optional system prompt for the teammate',
+          description: 'Optional additional instructions for the teammate',
         },
       },
       required: ['name', 'role'],

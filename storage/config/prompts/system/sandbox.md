@@ -1,5 +1,3 @@
-# 沙箱环境
-
 {{sandbox_info}}
 
 {{sandbox_container_workspace}}

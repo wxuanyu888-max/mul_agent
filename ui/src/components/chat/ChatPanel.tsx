@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, User, Bot, Loader2, RefreshCw, Trash2, Menu, MessageSquare, ChevronRight, ChevronDown, CheckCircle, AlertCircle, Play, Brain, Activity, Clock, Mic, MicOff, Volume2, Square } from 'lucide-react';
 import { chatApi, infoApi } from '../../services/api';
-import { synthesizeSpeech, playAudio, stopAudio } from '../../services/endpoints/voice';
+import { synthesizeSpeech, playAudio, stopAudio, playWithBrowserTTS, stopBrowserTTS } from '../../services/endpoints/voice';
 
 // Web Speech API 类型声明
 declare global {
@@ -845,6 +845,7 @@ export function ChatPanel() {
     // 如果正在播放同一个消息，停止播放
     if (playingMessageIndex === messageIndex && isPlaying) {
       stopAudio(audioRef.current);
+      stopBrowserTTS();
       setIsPlaying(false);
       setPlayingMessageIndex(null);
       return;
@@ -854,6 +855,7 @@ export function ChatPanel() {
     if (audioRef.current) {
       stopAudio(audioRef.current);
     }
+    stopBrowserTTS();
 
     try {
       setIsPlaying(true);
@@ -880,9 +882,12 @@ export function ChatPanel() {
         audioRef.current = null;
       };
     } catch (error) {
-      console.error('TTS playback error:', error);
-      setIsPlaying(false);
-      setPlayingMessageIndex(null);
+      console.warn('[TTS] MiniMax failed, using browser TTS...', error);
+      // 使用浏览器原生 TTS 作为后备
+      playWithBrowserTTS(content, selectedVoice, () => {
+        setIsPlaying(false);
+        setPlayingMessageIndex(null);
+      });
     }
   };
 

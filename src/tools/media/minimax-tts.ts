@@ -67,11 +67,15 @@ export class MiniMaxTTSService {
       sample_rate = 32000,
     } = options;
 
-    // 构建 WebSocket URL
-    const wsUrl = `wss://api.minimax.chat/ws/v1/t2a_v2?group=${this.apiKey}&character=${voice_id}`;
+    // 构建 WebSocket URL - 根据 MiniMax 文档
+    const wsUrl = `wss://api.minimaxi.com/ws/v1/t2a_v2`;
 
     return new Promise((resolve, reject) => {
-      const ws = new WebSocket(wsUrl);
+      const ws = new WebSocket(wsUrl, {
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+      });
 
       let audioChunks: Buffer[] = [];
       let connected = false;
@@ -92,13 +96,9 @@ export class MiniMaxTTSService {
         ws.send(
           JSON.stringify({
             event: 'task_start',
-            model: 'speech-2.8-turbo',
+            model: 'speech-2.6-hd',
             voice_setting: {
               voice_id,
-              speed,
-              vol,
-              pitch,
-              emotion,
             },
             audio_setting: {
               sample_rate,
@@ -113,6 +113,7 @@ export class MiniMaxTTSService {
 
       ws.on('message', (data: Buffer) => {
         try {
+          console.log('[MiniMax TTS] Raw message:', data.toString().substring(0, 500));
           const message = JSON.parse(data.toString());
           const event = message.event;
 
