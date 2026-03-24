@@ -5,6 +5,8 @@
  * 1. micro_compact: 每次 LLM 调用前，将旧的 tool result 替换为占位符
  * 2. auto_compact: token 超过阈值时，保存完整对话到磁盘，让 LLM 做摘要
  * 3. manual compact: 手动调用 compact 工具触发同样的摘要机制
+ *
+ * 压缩前会触发记忆更新（short_term 和 long_term）
  */
 
 import * as fs from 'fs';
@@ -12,6 +14,7 @@ import * as path from 'path';
 import { getLLMClient } from './llm.js';
 import type { Message, ContentBlock } from './types.js';
 import { getLogsPath } from '../utils/path.js';
+import { MemoryPersistence, getMemoryPersistence } from '../memory/persistence.js';
 
 /**
  * 压缩配置
@@ -205,14 +208,20 @@ export function needsAutoCompact(messages: Message[], threshold: number): boolea
  * token 超过阈值时，保存完整对话到磁盘，让 LLM 做摘要
  *
  * 重要：保留用户最近的消息（包含当前任务需求），只压缩历史上下文
+ *
+ * 压缩前会自动更新 short_term 和 long_term 记忆
  */
 export async function autoCompact(
   messages: Message[],
   config: CompactionConfig = {},
-  context?: CompactionContext
+  context?: CompactionContext,
+  agentId?: string
 ): Promise<{ messages: Message[]; context: CompactionContext }> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const ctx: CompactionContext = context ?? createCompactionContext();
+
+  // 0. 压缩前更新 short_term 和 long_term 记忆
+  await updateMemoriesBeforeCompaction(messages, agentId);
 
   // 1. 保留用户最近的消息（包含当前需求），不压缩
   const keepRecentUserCount = cfg.keepRecentUserMessages ?? 2;
@@ -350,9 +359,10 @@ function extractTextFromResponse(response: { content?: Array<{ type: string; tex
 export async function manualCompact(
   messages: Message[],
   config: CompactionConfig = {},
-  context?: CompactionContext
+  context?: CompactionContext,
+  agentId?: string
 ): Promise<{ messages: Message[]; context: CompactionContext }> {
-  return autoCompact(messages, config, context);
+  return autoCompact(messages, config, context, agentId);
 }
 
 /**
@@ -463,4 +473,117 @@ export function createCompactionContext(): CompactionContext {
  */
 function generateId(): string {
   return crypto.randomUUID();
+}
+
+/**
+ * 压缩前更新 short_term 和 long_term 记忆
+ *
+ * 将当前会话的重要信息保存到记忆中，确保压缩后不会丢失
+ */
+async function updateMemoriesBeforeCompaction(
+  messages: Message[],
+  agentId?: string
+): Promise<void> {
+  try {
+    const persistence = getMemoryPersistence(agentId);
+
+    // 提取对话摘要信息
+    const userMessages = messages.filter((m) => m.role === 'user');
+    const assistantMessages = messages.filter((m) => m.role === 'assistant');
+
+    // 构建 short_term 记忆内容
+    const shortTermContent = buildShortTermSummary(messages);
+
+    // 检查是否已有 short_term 记忆
+    const existingShortTerm = await persistence.getByType('short_term');
+
+    if (existingShortTerm.length > 0) {
+      // 更新已有的 short_term 记忆
+      const latest = existingShortTerm.sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      )[0];
+      await persistence.update(latest.id, {
+        content: { key: 'session_summary', value: shortTermContent },
+      });
+    } else {
+      // 创建新的 short_term 记忆
+      await persistence.add({
+        agent_id: agentId || 'core_brain',
+        type: 'short_term',
+        content: { key: 'session_summary', value: shortTermContent },
+      });
+    }
+
+    // 提取项目相关的重要信息作为 long_term
+    const longTermContent = extractLongTermInfo(messages);
+    if (longTermContent) {
+      const existingLongTerm = await persistence.getByType('long_term');
+
+      if (existingLongTerm.length > 0) {
+        const latest = existingLongTerm.sort(
+          (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )[0];
+        await persistence.update(latest.id, {
+          content: { key: 'project_info', value: longTermContent },
+        });
+      } else {
+        await persistence.add({
+          agent_id: agentId || 'core_brain',
+          type: 'long_term',
+          content: { key: 'project_info', value: longTermContent },
+        });
+      }
+    }
+
+    console.log('[Compaction] Memories updated before compaction');
+  } catch (error) {
+    console.error('[Compaction] Failed to update memories:', error);
+    // 不阻塞压缩流程
+  }
+}
+
+/**
+ * 构建短期记忆摘要
+ */
+function buildShortTermSummary(messages: Message[]): string {
+  const parts: string[] = [];
+
+  const userMessages = messages.filter((m) => m.role === 'user');
+  const assistantMessages = messages.filter((m) => m.role === 'assistant');
+
+  parts.push(`会话消息数: ${messages.length} (用户: ${userMessages.length}, 助手: ${assistantMessages.length})`);
+
+  // 提取最近的用户请求（保留当前需求）
+  if (userMessages.length > 0) {
+    const recentUserMsgs = userMessages.slice(-2);
+    const recentContent = recentUserMsgs
+      .map((m) => {
+        const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+        return content.slice(0, 200);
+      })
+      .join('\n');
+    parts.push(`最近用户需求:\n${recentContent}`);
+  }
+
+  return parts.join('\n\n');
+}
+
+/**
+ * 提取长期记忆信息
+ * 从对话中提取项目结构、技术栈等持久化信息
+ */
+function extractLongTermInfo(messages: Message[]): string | null {
+  const allContent = messages
+    .map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
+    .join(' ');
+
+  // 提取文件路径作为关键上下文
+  const filePaths = allContent.match(/[a-zA-Z0-9_\-./]+\.(ts|js|json|md|yaml|yml)/g) || [];
+  const uniquePaths = [...new Set(filePaths)].slice(0, 20);
+
+  if (uniquePaths.length === 0) {
+    return null;
+  }
+
+  return `相关文件:\n${uniquePaths.join('\n')}`;
 }

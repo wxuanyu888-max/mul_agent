@@ -92,7 +92,8 @@
       "mcp__chrome-devtools__list_console_messages",
       "mcp__chrome-devtools__fill",
       "mcp__chrome-devtools__close_page",
-      "mcp__github__search_code"
+      "mcp__github__search_code",
+      "mcp__github__list_issues"
     ]
   },
   "enableAllProjectMcpServers": true,

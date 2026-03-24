@@ -11,7 +11,10 @@ export function createTeammateSendTool() {
   return {
     label: "Teammate Send",
     name: "teammate_send",
-    description: 'Send a message to a teammate. They will receive it and respond accordingly.',
+    description: `Send a message to a teammate. They will receive it and respond accordingly.
+
+## 交接文档要求（必须遵守）
+发送消息前，如果涉及任务交接，必须使用 memory 工具的 write 功能写入 handover 类型的记忆。`,
     parameters: {
       type: 'object',
       properties: {

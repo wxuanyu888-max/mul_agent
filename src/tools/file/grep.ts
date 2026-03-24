@@ -9,6 +9,7 @@ export interface GrepParams {
   path?: string;           // 搜索路径（保留兼容，实际现在搜 workspace）
   maxResults?: number;     // 最大结果数
   mode?: 'semantic' | 'exact';  // 搜索模式
+  contextLines?: number;   // 上下文行数（仅 exact 模式）
 }
 
 interface GrepResult {
@@ -85,6 +86,7 @@ export function createGrepTool() {
         path: { type: 'string', description: 'Directory path to search in (default: workspace)', default: 'storage/runtime/workspace' },
         maxResults: { type: 'number', description: 'Maximum number of results', default: 10 },
         mode: { type: 'string', description: 'Search mode: semantic (vector) or exact (regex)', enum: ['semantic', 'exact'], default: 'semantic' },
+        contextLines: { type: 'number', description: 'Number of context lines before/after match (exact mode only)', default: 1 },
       },
       required: ['query'],
     },
@@ -94,11 +96,12 @@ export function createGrepTool() {
           query,
           maxResults = 10,
           mode = 'semantic',
+          contextLines = 1,
         } = params;
 
         if (mode === 'exact') {
           // 精确搜索：使用传统的正则匹配
-          return await exactSearch(query, params.path || '.', maxResults);
+          return await exactSearch(query, params.path || '.', maxResults, contextLines);
         }
 
         // 向量搜索：使用 rag search
@@ -127,7 +130,7 @@ export function createGrepTool() {
 /**
  * 精确搜索（传统正则匹配）
  */
-async function exactSearch(query: string, searchPath: string, maxResults: number) {
+async function exactSearch(query: string, searchPath: string, maxResults: number, contextLines: number = 1) {
   const fs = await import('node:fs/promises');
   const path = await import('node:path');
 
@@ -156,8 +159,8 @@ async function exactSearch(query: string, searchPath: string, maxResults: number
             for (let i = 0; i < lines.length; i++) {
               if (results.length >= maxResults) break;
               if (regex.test(lines[i])) {
-                const start = Math.max(0, i - 1);
-                const end = Math.min(lines.length - 1, i + 1);
+                const start = Math.max(0, i - contextLines);
+                const end = Math.min(lines.length - 1, i + contextLines);
 
                 results.push({
                   path: fullPath,

@@ -22,6 +22,9 @@
   "author": "your-org",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "mulagent": "./src/cli/repl.ts"
+  },
   "directories": {
     "doc": "docs",
     "test": "tests"

@@ -11,7 +11,16 @@ export function createTeammateSpawnTool() {
   return {
     label: "Teammate Spawn",
     name: "teammate_spawn",
-    description: 'Create a new teammate agent. Give them a name and role, and they will start working independently.',
+    description: `Create a new teammate agent. Give them a name and role, and they will start working independently.
+
+## 交接文档要求（必须遵守）
+创建 teammate 前，必须使用 memory 工具的 write 功能写入 handover 类型的记忆，包含：
+- task_goal: 任务目标
+- completed_steps: 已完成的步骤
+- pending_steps: 待完成的步骤
+- key_context: 关键上下文
+
+请先写入 handover，再创建 teammate。`,
     parameters: {
       type: 'object',
       properties: {

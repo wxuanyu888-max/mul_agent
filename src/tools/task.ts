@@ -36,7 +36,19 @@ export function createTaskTool(): TaskTool {
   return {
     label: 'Task',
     name: 'task',
-    description: `Task management - Create and manage subtasks. Available actions:
+    description: `Task management - Create and manage subtasks.
+
+## 交接文档要求（必须遵守）
+每次调用 task 工具前，必须使用 memory 工具的 write 功能写入 handover 类型的记忆，包含：
+- task_goal: 任务目标
+- completed_steps: 已完成的步骤（列表）
+- pending_steps: 待完成的步骤（列表）
+- key_context: 关键上下文（文件路径、配置等）
+- constraints: 约束条件
+
+请先写入 handover，再调用 task。
+
+Available actions:
 - task: Create and run a new subtask
 - task_create: Create a new task
 - task_update: Update task status/details
