@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import { Send, User, Bot, Loader2, RefreshCw, Trash2, Menu, MessageSquare, ChevronRight, ChevronDown, CheckCircle, AlertCircle, Play, Brain, Activity, Clock, Mic, MicOff, Volume2, Square } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Send, User, Bot, Loader2, RefreshCw, Trash2, Menu, MessageSquare, ChevronRight, ChevronDown, CheckCircle, AlertCircle, Play, Brain, Activity, Clock, Mic, MicOff, Volume2, Square, Upload, X, Image, FileText } from 'lucide-react';
 import { chatApi, infoApi } from '../../services/api';
 import { synthesizeSpeech, playAudio, stopAudio, playWithBrowserTTS, stopBrowserTTS } from '../../services/endpoints/voice';
+import { uploadFile, isAllowedFileType, formatFileSize, getFileUrl } from '../../services/endpoints/files';
+import { FileUploadButton, FilePreviewItem } from './FileUploadButton';
 
 // Web Speech API 类型声明
 declare global {
@@ -13,7 +15,7 @@ declare global {
 import { AgentStatePanel } from './AgentStatePanel';
 import { CommandAutocomplete, CommandSuggestion } from './CommandAutocomplete';
 import { SessionList } from './SessionList';
-import { Message, Agent } from '../../types';
+import { Message, Agent, Attachment } from '../../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -247,6 +249,11 @@ export function ChatPanel() {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [hasSuggestions, setHasSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // 添加 loading 状态防止重复请求
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  const isLoadingDataRef = useRef(false); // 用于在 useEffect 中检查
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 语音识别状态
@@ -266,6 +273,10 @@ export function ChatPanel() {
   // Execution steps for displaying agent actions (like Claude's thought process)
   const [executionSteps, setExecutionSteps] = useState<ExecutionStep[]>([]);
   const [showExecutionSteps, setShowExecutionSteps] = useState(true);
+
+  // File upload state
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   // 保存状态到 localStorage
   useEffect(() => {
@@ -290,40 +301,75 @@ export function ChatPanel() {
     scrollToBottom();
   }, [messages]);
 
-  // Load agents and sessions
+  // Load agents and sessions - 使用 ref 防止重复加载
   useEffect(() => {
-    const loadData = async () => {
-      // Load agents
-      try {
-        const res = await infoApi.getAgentTeam();
-        const agentsList = res.data.agents || [];
-        setAgents(agentsList);
-        if (agentsList.length > 0 && !selectedAgent) {
-          setSelectedAgent(agentsList[0].agent_id);
-        }
-      } catch (err) {
-        console.error('Failed to load agents:', err);
-      }
+    // 防止重复调用
+    if (isLoadingDataRef.current) return;
+    isLoadingDataRef.current = true;
 
-      // Load recent sessions ONLY if we don't have a current session
-      if (!currentSessionId) {
-        await loadSessions();
-      } else {
-        // Restore messages from current session
-        await loadSessionMessages(currentSessionId);
+    const loadData = async () => {
+      setIsLoadingData(true);
+      try {
+        // Load agents
+        try {
+          const res = await infoApi.getAgentTeam();
+          const agentsList = res.data.agents || [];
+          setAgents(agentsList);
+          if (agentsList.length > 0 && !selectedAgent) {
+            setSelectedAgent(agentsList[0].agent_id);
+          }
+        } catch (err) {
+          console.error('Failed to load agents:', err);
+        }
+
+        // Load recent sessions ONLY if we don't have a current session
+        if (!currentSessionId) {
+          await loadSessions();
+        } else {
+          // Restore messages from current session
+          await loadSessionMessages(currentSessionId);
+        }
+      } finally {
+        setIsLoadingData(false);
       }
     };
 
     loadData();
-  }, []);
+
+    // 清理函数
+    return () => {
+      isLoadingDataRef.current = false;
+    };
+  }, []); // 空依赖数组，只在组件挂载时执行一次
+
+  // 当 selectedAgent 变化时，重新加载 sessions
+  useEffect(() => {
+    if (!selectedAgent || isLoadingDataRef.current) return;
+
+    const loadAgentSessions = async () => {
+      setIsLoadingData(true);
+      try {
+        await loadSessions();
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    loadAgentSessions();
+  }, [selectedAgent]);
 
   const loadSessions = async () => {
     try {
       const res = await chatApi.getSessions(selectedAgent);
       const sessions = res.data.sessions || [];
-      if (sessions.length > 0 && !currentSessionId) {
-        // Load most recent session
-        loadSessionMessages(sessions[0].session_id);
+      if (sessions.length > 0) {
+        // Always load the most recent session when agent changes
+        await loadSessionMessages(sessions[0].session_id);
+      } else {
+        // No sessions - clear current session and messages
+        setMessages([]);
+        setCurrentSessionId('');
+        localStorage.removeItem('chat_currentSessionId');
       }
     } catch (err) {
       console.error('Failed to load sessions:', err);
@@ -355,6 +401,7 @@ export function ChatPanel() {
     setCurrentSessionId('');
     localStorage.removeItem('chat_currentSessionId');
     setInput('');
+    setAttachments([]);
   };
 
   const handleSessionSelect = (sessionId: string) => {
@@ -362,11 +409,71 @@ export function ChatPanel() {
     setShowSessionList(false);
   };
 
+  // Handle files selected from upload button
+  const handleFilesSelected = (newAttachments: Attachment[]) => {
+    setAttachments(prev => [...prev, ...newAttachments]);
+  };
+
+  // Remove attachment
+  const handleRemoveAttachment = (attachmentId: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== attachmentId));
+  };
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const validFiles = files.filter(file => isAllowedFileType(file));
+
+    if (validFiles.length === 0) {
+      alert('不支持的文件类型。请上传图片（PNG、JPG、GIF、WebP）或 PDF 文件。');
+      return;
+    }
+
+    // Upload files
+    const uploadedAttachments: Attachment[] = [];
+    for (const file of validFiles) {
+      try {
+        const metadata = await uploadFile(file);
+        uploadedAttachments.push({
+          id: metadata.id,
+          filename: metadata.filename,
+          originalName: metadata.originalName,
+          mimeType: metadata.mimeType,
+          size: metadata.size,
+          url: getFileUrl(metadata.id)
+        });
+      } catch (error) {
+        console.error('Upload failed:', error);
+        alert(`文件 ${file.name} 上传失败`);
+      }
+    }
+
+    if (uploadedAttachments.length > 0) {
+      setAttachments(prev => [...prev, ...uploadedAttachments]);
+    }
+  }, []);
+
   // 跟踪进行中的请求
   const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set());
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() && attachments.length === 0) return;
 
     const messageContent = input.trim();
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -375,10 +482,12 @@ export function ChatPanel() {
       role: 'user',
       content: messageContent,
       timestamp: Date.now(),
+      attachments: attachments.length > 0 ? [...attachments] : undefined,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    setAttachments([]);
     setPendingRequests((prev) => new Set(prev).add(requestId));
     setExecutionSteps([]); // Clear previous execution steps
     stepStartTimes.current.clear(); // Clear step timing
@@ -394,6 +503,11 @@ export function ChatPanel() {
           message: userMessage.content,
           agent_id: selectedAgent || undefined,
           conversation_id: currentSessionId || undefined,
+          attachments: userMessage.attachments ? userMessage.attachments.map(a => ({
+            id: a.id,
+            type: a.mimeType.startsWith('image/') ? 'image' : 'document',
+            url: a.url,
+          })) : undefined,
         }),
       });
 
@@ -1009,7 +1123,52 @@ export function ChatPanel() {
                     }`}
                   >
                     {isUser ? (
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      <>
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        {/* Display attachments */}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {msg.attachments.map((attachment) => {
+                              const isImage = attachment.mimeType?.startsWith('image/');
+                              const isPdf = attachment.mimeType === 'application/pdf';
+
+                              return (
+                                <div
+                                  key={attachment.id}
+                                  className="flex items-center gap-2 bg-blue-600/20 rounded-lg px-2 py-1.5"
+                                >
+                                  {isImage && attachment.url ? (
+                                    <img
+                                      src={attachment.url}
+                                      alt={attachment.originalName}
+                                      className="w-16 h-16 object-cover rounded"
+                                    />
+                                  ) : (
+                                    <div className="w-16 h-16 flex items-center justify-center bg-blue-600/30 rounded">
+                                      {isPdf ? (
+                                        <div className="text-center">
+                                          <FileText className="w-6 h-6 text-blue-300 mx-auto" />
+                                          <span className="text-xs text-blue-200">PDF</span>
+                                        </div>
+                                      ) : (
+                                        <Image className="w-6 h-6 text-blue-300" />
+                                      )}
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="text-xs text-blue-100 truncate max-w-[100px]">
+                                      {attachment.originalName}
+                                    </p>
+                                    <p className="text-xs text-blue-300">
+                                      {formatFileSize(attachment.size)}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="text-sm">
                         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
@@ -1114,7 +1273,29 @@ export function ChatPanel() {
 
       {/* Input */}
       <div className="px-6 py-4 border-t border-gray-200 bg-white">
+        {/* Drag and drop overlay */}
+        {isDragging && (
+          <div
+            className="absolute inset-0 bg-purple-100/90 z-50 flex items-center justify-center border-2 border-dashed border-purple-400 m-4 rounded-xl"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <div className="text-center">
+              <Upload className="w-12 h-12 text-purple-500 mx-auto mb-2" />
+              <p className="text-purple-700 font-medium">松开鼠标上传文件</p>
+              <p className="text-purple-500 text-sm">支持 PNG、JPG、GIF、WebP、PDF</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-3">
+          {/* File Upload Button */}
+          <FileUploadButton
+            onFilesSelected={handleFilesSelected}
+            disabled={pendingRequests.size > 0}
+          />
+
           {/* Voice Input Button - 高度固定44px与输入框对齐 */}
           <button
             onClick={toggleVoiceRecording}
@@ -1133,7 +1314,12 @@ export function ChatPanel() {
           </button>
 
           {/* Input Area */}
-          <div className="flex-1 relative">
+          <div
+            className={`flex-1 relative ${isDragging ? 'opacity-50' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             {/* 语音聆听模式：顶部提示条 */}
             {isListening && (
               <div className="absolute left-0 top-0 z-10 flex items-center gap-2 w-full bg-red-50 border-2 border-red-200 rounded-t-xl px-4 py-2 pointer-events-none"
@@ -1154,6 +1340,20 @@ export function ChatPanel() {
               className={`w-full resize-none bg-gray-50 border rounded-xl px-4 py-3 text-gray-700 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent max-h-32 ${isListening ? 'border-red-200 bg-red-50/50 rounded-t-none' : 'border-gray-200'}`}
               style={{ minHeight: '44px' }}
             />
+
+            {/* Attachments Preview */}
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {attachments.map((attachment) => (
+                  <FilePreviewItem
+                    key={attachment.id}
+                    attachment={attachment}
+                    onRemove={() => handleRemoveAttachment(attachment.id)}
+                  />
+                ))}
+              </div>
+            )}
+
             {!isListening && showAutocomplete && (
               <CommandAutocomplete
                 input={input}
@@ -1169,7 +1369,7 @@ export function ChatPanel() {
           {/* Send Button - 高度固定44px与输入框对齐 */}
           <button
             onClick={sendMessage}
-            disabled={!input.trim() && !isListening}
+            disabled={!input.trim() && attachments.length === 0 && !isListening}
             className="px-5 h-11 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl font-medium text-sm transition-all disabled:cursor-not-allowed flex items-center gap-2 flex-shrink-0"
           >
             {pendingRequests.size > 0 ? (

@@ -31,6 +31,18 @@ export const DEFAULT_FILTER_LEVEL: FilterLevel = 'smart';
 export const DEFAULT_PRETTY_PRINT = true;
 
 /**
+ * 过滤配置
+ */
+const FILTER_CONFIG = {
+  /** 字符串最大长度，超过截断 */
+  maxStringLength: 2000,
+  /** 数组最大元素数量，超过截断 */
+  maxArrayLength: 20,
+  /** 嵌套最大深度 */
+  maxDepth: 10,
+};
+
+/**
  * 需要过滤的元数据字段
  */
 const METADATA_FIELDS = new Set([
@@ -46,6 +58,52 @@ const METADATA_FIELDS = new Set([
   'updated_at',
   '_raw',
   '__typename',
+  // 扩展：URL 相关字段（通常很长但不关键）
+  'html_url',
+  'url',
+  'api_url',
+  'git_url',
+  'ssh_url',
+  'clone_url',
+  'download_url',
+  'avatar_url',
+  'events_url',
+  'followers_url',
+  'following_url',
+  'gists_url',
+  'starred_url',
+  'subscriptions_url',
+  'organizations_url',
+  'repos_url',
+  'received_events_url',
+  'keys_url',
+  'collaborators_url',
+  'forks_url',
+  'stargazers_url',
+  'watchers_url',
+  'commits_url',
+  'branches_url',
+  'tags_url',
+  'blobs_url',
+  'git_tags_url',
+  'trees_url',
+  'statuses_url',
+  'languages_url',
+  'license',
+  'permissions',
+  // 扩展：ID 字段（通常不需要显示）
+  'node_id',
+  'temp_clone_token',
+  'network_count',
+  'subscribers_count',
+  'forks',
+  'open_issues',
+  'watchers',
+  'private',
+  'fork',
+  'site_admin',
+  'gravatar_id',
+  'visibility',
 ]);
 
 /**
@@ -90,7 +148,7 @@ export function filterJsonData(data: unknown, level: FilterLevel = DEFAULT_FILTE
     return data;
   }
 
-  // 字符串：直接返回
+  // 字符串：直接返回（不截断）
   if (typeof data === 'string') {
     return data;
   }
@@ -100,7 +158,7 @@ export function filterJsonData(data: unknown, level: FilterLevel = DEFAULT_FILTE
     return data;
   }
 
-  // 数组：过滤每个元素
+  // 数组：过滤每个元素（不限制数量，保留完整数据）
   if (Array.isArray(data)) {
     const filtered = data
       .map(item => filterJsonData(item, level))

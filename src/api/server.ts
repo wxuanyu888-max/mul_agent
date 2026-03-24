@@ -6,6 +6,7 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import multer from 'multer';
 
 // Import routers
 import { createInfoRouter } from './routes/info.js';
@@ -17,6 +18,7 @@ import { createProjectsRouter } from './routes/projects.js';
 import { createTokenRouter } from './routes/token.js';
 import { createIntegrationsRouter } from './routes/integrations.js';
 import { createTasksRouter } from './routes/tasks.js';
+import { createFilesRouter } from './routes/files.js';
 import { createVoiceRouter } from './routes/voice.js';
 import { createCronRouter } from './routes/cron.js';
 
@@ -49,6 +51,25 @@ async function initializeApp() {
   app.use(cors());
   app.use(express.json());
 
+  // Multer configuration for file uploads
+  const storage = multer.memoryStorage();
+  const upload = multer({
+    storage,
+    limits: {
+      fileSize: 10 * 1024 * 1024 // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'application/pdf'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('File type not allowed'));
+      }
+    }
+  });
+  // Make upload middleware available to routes
+  (app as any).upload = upload;
+
   // Request logging
   app.use((req: Request, res: Response, next: NextFunction) => {
     console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
@@ -70,6 +91,9 @@ async function initializeApp() {
   app.use('/api/v1', createTokenRouter());
   app.use('/api/v1', createIntegrationsRouter());
   app.use('/api/v1', createTasksRouter());
+
+  // File upload router - use multer middleware
+  app.use('/api/v1/files', createFilesRouter());
 
   // Register additional feature routers
   app.use('/api/v1/debug', createDebugRouter());

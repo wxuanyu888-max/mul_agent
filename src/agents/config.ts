@@ -31,6 +31,10 @@ export interface AgentConfig {
     temperature: number;
     max_tokens: number;
   };
+  thinking?: {
+    enabled: boolean;
+    budget_tokens?: number;
+  };
 }
 
 /**
@@ -110,6 +114,22 @@ export function getMaxTokens(): number {
 export function getProvider(): string {
   const config = loadConfig();
   return config.provider;
+}
+
+/**
+ * 获取 Thinking 配置
+ */
+export function getThinkingConfig(): { enabled: boolean; budget_tokens?: number } {
+  const config = loadConfig();
+  return config.thinking ?? { enabled: false };
+}
+
+/**
+ * 判断 Thinking 是否启用
+ */
+export function isThinkingEnabled(): boolean {
+  const thinking = getThinkingConfig();
+  return thinking.enabled;
 }
 
 /**

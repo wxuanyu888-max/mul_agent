@@ -11,6 +11,7 @@ import {
   getDefaultModel,
   getTemperature,
   getMaxTokens,
+  getThinkingConfig,
 } from './config.js';
 import { logLlmCall } from '../logger/index.js';
 import type { Message } from './types.js';
@@ -36,6 +37,11 @@ export interface LLMRequest {
     description: string;
     input_schema: Record<string, unknown>;
   }>;
+  /** Thinking 配置 */
+  thinking?: {
+    type: 'enabled';
+    budget_tokens: number;
+  };
   /** 超时时间 (毫秒)，默认 120000ms (2分钟) */
   timeoutMs?: number;
 }
@@ -102,6 +108,19 @@ export class LLMClient {
     // 注入 tools 参数
     if (request.tools && request.tools.length > 0) {
       body.tools = request.tools;
+    }
+
+    // 注入 thinking 参数（如果请求中未指定，则使用全局配置）
+    if (request.thinking) {
+      body.thinking = request.thinking;
+    } else {
+      const globalThinking = getThinkingConfig();
+      if (globalThinking.enabled) {
+        body.thinking = {
+          type: 'enabled',
+          budget_tokens: globalThinking.budget_tokens ?? 4096,
+        };
+      }
     }
 
     const startTime = Date.now();

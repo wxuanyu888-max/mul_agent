@@ -36,9 +36,10 @@ export function SessionList({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const sessionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const isLoadingRef = useRef(false); // 防止重复加载
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isLoadingRef.current) {
       loadSessions();
     }
   }, [isOpen, selectedAgent]);
@@ -160,6 +161,8 @@ export function SessionList({
   }, [sessions, selectedIndex, onClose, onNewChat, deleting, selectMode, selectedSessions]);
 
   const loadSessions = async () => {
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
     setLoading(true);
     try {
       const res = await chatApi.getSessions(selectedAgent);
@@ -169,6 +172,7 @@ export function SessionList({
       setSessions([]); // Set empty array on error to avoid undefined state
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
   };
 

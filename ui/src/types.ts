@@ -172,10 +172,20 @@ export interface IntegrationFormData {
 }
 
 // Chat Message Types
+export interface Attachment {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url?: string;
+}
+
 export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  attachments?: Attachment[];
 }
 
 export interface ApiMessage {
