@@ -88,9 +88,6 @@ storage/*.db-wal
 # ===== Plugins =====
 plugins/
 
-# ===== Documentation Development =====
-docs_development/
-
 # ===== Memory =====
 memory.db
 memory.db-shm

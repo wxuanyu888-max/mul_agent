@@ -18,6 +18,8 @@ export interface CronJob {
 }
 
 // Cron 表达式解析 (简化版)
+// 支持: min hour day month dow
+// 例如: "50 22 * * *" = 每天 22:50
 function parseCronExpression(schedule: string, now: number): number {
   const parts = schedule.split(' ');
   if (parts.length !== 5) return now + 3600000; // 无效则 1 小时后
@@ -25,18 +27,31 @@ function parseCronExpression(schedule: string, now: number): number {
   const [min, hour, day, month, dow] = parts;
   const date = new Date(now);
 
+  // 先设置为当前时间
+  date.setSeconds(0, 0);
+
   // 解析分钟
   if (min !== '*') {
-    date.setMinutes(parseInt(min), 0, 0);
+    date.setMinutes(parseInt(min));
   } else {
-    date.setMinutes(0, 0, 0);
+    date.setMinutes(0);
   }
 
   // 解析小时
   if (hour !== '*') {
-    date.setHours(parseInt(hour), 0, 0, 0);
+    date.setHours(parseInt(hour));
   } else {
-    date.setHours(date.getHours(), 0, 0, 0);
+    date.setHours(date.getHours());
+  }
+
+  // 解析日期（可选）
+  if (day !== '*') {
+    date.setDate(parseInt(day));
+  }
+
+  // 解析月份（可选）
+  if (month !== '*') {
+    date.setMonth(parseInt(month) - 1); // 月份从 0 开始
   }
 
   // 如果设置的时间已经过去，推到下一天
@@ -165,7 +180,12 @@ export class CronManager {
       if (!job.enabled) continue;
 
       if (job.nextRun <= now) {
-        console.log(`[CronManager] Executing job: ${job.label}`);
+        // 输出醒目日志
+        console.log('\n========================================');
+        console.log(`🔔 [定时提醒] ${job.label}`);
+        console.log(`📝 ${job.task}`);
+        console.log(`⏰ 执行时间: ${new Date(now).toLocaleString()}`);
+        console.log('========================================\n');
 
         // 发送通知
         notificationSystem.add('cron', job.label, job.task);
@@ -178,6 +198,8 @@ export class CronManager {
         // 计算下次执行时间
         job.nextRun = parseCronExpression(job.schedule, now);
         this.saveJob(job);
+
+        console.log(`[CronManager] Job ${job.label} next run: ${new Date(job.nextRun).toLocaleString()}`);
       }
     }
   }

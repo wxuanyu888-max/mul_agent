@@ -4,6 +4,8 @@
  * 负责定期检查 Agent 状态并处理提醒
  */
 
+import { getCronManager } from '../tools/system/cron-manager.js';
+
 /**
  * 心跳配置
  */
@@ -118,8 +120,24 @@ export class Heartbeat {
    * 获取待执行的定时任务
    */
   private async getPendingCronJobs(): Promise<CronJob[]> {
-    // 简化实现 - 实际应该从存储中读取
-    return [];
+    try {
+      const manager = getCronManager();
+      const jobs = manager.listJobs();
+      const now = Date.now();
+
+      // 返回所有已到期的任务
+      return jobs
+        .filter(job => job.enabled && job.nextRun <= now)
+        .map(job => ({
+          id: job.id,
+          name: job.label,
+          schedule: job.schedule,
+          nextRun: job.nextRun,
+        }));
+    } catch (error) {
+      console.error('[Heartbeat] Failed to get pending cron jobs:', error);
+      return [];
+    }
   }
 
   /**
