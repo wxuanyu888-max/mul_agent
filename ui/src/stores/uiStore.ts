@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type TabType = 'chat' | 'voice' | 'workflow' | 'tasks' | 'logs' | 'memory' | 'token' | 'keys' | 'prompts' | 'humaninloop' | 'checkpoint';
+type TabType = 'chat' | 'workflow' | 'tasks' | 'logs' | 'memory' | 'token' | 'keys' | 'prompts' | 'humaninloop' | 'checkpoint';
 
 interface UIState {
   activeTab: TabType;

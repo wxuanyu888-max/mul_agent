@@ -33,6 +33,7 @@ import {
 import { getBackgroundManager } from './background.js';
 import { loadSkillsFromDir, getUserInvocableSkills, type SkillEntry } from '../skills/index.js';
 import { getEnabledSkills } from '../skills/manager.js';
+import { getCheckpointManager, type CheckpointReason, type ToolCallRecord } from './checkpoint/index.js';
 import path from 'node:path';
 
 /**
@@ -74,6 +75,14 @@ export interface AgentLoopConfig {
   compaction?: CompactionConfig;
   /** 手动触发压缩的回调 */
   onManualCompact?: (messages: Message[]) => Promise<void>;
+  /** SSE 写入回调 - 用于实时发送事件给前端 */
+  onSseWrite?: (event: SseEvent) => void;
+}
+
+/** SSE 事件类型 */
+export interface SseEvent {
+  type: 'status' | 'tool' | 'response' | 'complete' | 'error';
+  [key: string]: any;
 }
 
 /**
@@ -139,6 +148,10 @@ export class AgentLoop {
   private conversationRound: number = 0;
   /** 审查触发阈值 */
   private readonly REVIEW_THRESHOLD = 10;
+  /** Checkpoint 相关 */
+  private lastCheckpointId: string | null = null;
+  private completedToolCalls: ToolCallRecord[] = [];
+  private pendingToolCalls: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
 
   constructor(config: AgentLoopConfig = {}) {
     this.config = {
@@ -155,6 +168,7 @@ export class AgentLoop {
       onLlmResponse: config.onLlmResponse ?? (() => {}),
       compaction: config.compaction ?? {},
       onManualCompact: config.onManualCompact ?? (async () => {}),
+      onSseWrite: config.onSseWrite ?? (() => {}),
     };
     this.compactionContext = createCompactionContext();
   }
@@ -204,6 +218,52 @@ export class AgentLoop {
    */
   getConversationRound(): number {
     return this.conversationRound;
+  }
+
+  /**
+   * 创建 Checkpoint（捕获当前状态）
+   */
+  private async createCheckpoint(
+    reason: CheckpointReason,
+    currentMessages: Message[],
+    currentSystemPrompt: string,
+    iteration: number
+  ): Promise<string | null> {
+    // 如果没有 sessionId，跳过 checkpoint
+    if (!this.config.sessionId) {
+      return null;
+    }
+
+    try {
+      const checkpointManager = getCheckpointManager();
+      const checkpoint = await checkpointManager.create({
+        sessionId: this.config.sessionId,
+        iteration,
+        conversationRound: this.conversationRound,
+        messages: [...currentMessages],
+        systemPrompt: currentSystemPrompt,
+        compactionContext: {
+          compactionCount: this.compactionContext.compactionCount,
+          lastCompactionTokens: this.compactionContext.lastCompactionTokens,
+          transcriptPath: this.compactionContext.transcriptPath,
+          toolResultPlaceholders: new Map(), // 重新创建空的
+        },
+        generatedFiles: [...this.generatedFiles],
+        pendingToolCalls: [...this.pendingToolCalls],
+        completedToolCalls: [...this.completedToolCalls],
+        lastLlmCallId: null,
+        lastLlmResponse: null,
+        reason,
+        parentId: this.lastCheckpointId,
+      });
+
+      this.lastCheckpointId = checkpoint.id;
+      console.log(`[Checkpoint] Created checkpoint: ${checkpoint.id} (reason: ${reason}, messages: ${currentMessages.length})`);
+      return checkpoint.id;
+    } catch (error) {
+      console.error('[Checkpoint] Failed to create checkpoint:', error);
+      return null;
+    }
   }
 
   /**
@@ -417,6 +477,13 @@ export class AgentLoop {
       while (iterations < this.config.maxIterations) {
         iterations++;
 
+        // === 创建 Checkpoint (before_llm_call) ===
+        // 在每次迭代开始时创建checkpoint
+        await this.createCheckpoint('before_llm_call', messages, systemPrompt, iterations);
+
+        // 清空 pending tool calls（开始新的一轮）
+        this.pendingToolCalls = [];
+
         // === 文件列表刷新检查 ===
         // 每 N 轮或文件数量变化时重新构建 systemPrompt
         const needsRefresh =
@@ -456,15 +523,48 @@ export class AgentLoop {
         // 获取工具定义
         const tools = this.getToolDefinitions();
 
-        // 调用 LLM
+        // === 调用 LLM（带错误处理，保证 Agent 持续运行）===
         this.config.onLlmCall(toLLMMessages(messages), systemPrompt);
 
-        const response = await llm.chat({
-          model: (llm as any).model,
-          messages: toLLMMessages(messages),
-          system: systemPrompt,
-          tools: tools && tools.length > 0 ? tools : undefined,
-        });
+        let response: LLMResponse | null = null;
+        let llmError: Error | null = null;
+        const maxRetries = 3;
+        let retryCount = 0;
+
+        while (retryCount < maxRetries) {
+          try {
+            response = await llm.chat({
+              model: (llm as any).model,
+              messages: toLLMMessages(messages),
+              system: systemPrompt,
+              tools: tools && tools.length > 0 ? tools : undefined,
+            });
+            llmError = null;
+            break;
+          } catch (error) {
+            llmError = error instanceof Error ? error : new Error(String(error));
+            retryCount++;
+            console.error(`[LLM] Call failed (attempt ${retryCount}/${maxRetries}): ${llmError.message}`);
+            if (retryCount < maxRetries) {
+              // 等待 1 秒后重试
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+        }
+
+        if (llmError || !response) {
+          // LLM 调用全部失败，记录错误但继续循环
+          console.error(`[LLM] All ${maxRetries} attempts failed, continuing with error message`);
+          messages.push({
+            role: 'user',
+            content: `<system_error>\nLLM call failed: ${llmError?.message || 'Unknown error'}\nPlease try a different approach or provide guidance.</system_error>`,
+          });
+          messages.push({
+            role: 'assistant',
+            content: 'I encountered an issue with the LLM service. Let me try an alternative approach.',
+          });
+          continue;
+        }
 
         this.config.onLlmResponse(response);
 
@@ -482,7 +582,16 @@ export class AgentLoop {
           // 需要调用工具
           const toolCalls = this.extractToolCalls(response);
 
+          // 记录 pending tool calls
+          this.pendingToolCalls = toolCalls.map(tc => ({
+            id: tc.id,
+            name: tc.name,
+            input: tc.input,
+          }));
+
           if (toolCalls.length === 0) {
+            // 创建 session_end checkpoint
+            await this.createCheckpoint('after_tool_batch', messages, systemPrompt, iterations);
             return {
               content: textContent || 'Tool use indicated but no tool calls found',
               success: true,
@@ -502,6 +611,7 @@ export class AgentLoop {
           // 执行所有工具
           for (const toolCall of toolCalls) {
             toolCallsCount++;
+            const toolStartTime = Date.now(); // 记录工具开始时间
 
             // === Layer 3: 手动压缩检查 ===
             // 检查是否是 compact 工具调用
@@ -525,6 +635,15 @@ export class AgentLoop {
               continue;
             }
 
+            // 发送 SSE 事件：工具开始执行
+            this.config.onSseWrite({
+              type: 'tool',
+              tool: toolCall.name,
+              status: 'start',
+              input: toolCall.input,
+              tool_call_id: toolCall.id,
+            });
+
             // 检查是否需要确认
             const confirmed = await this.config.onToolConfirm(toolCall);
             if (!confirmed) {
@@ -533,14 +652,45 @@ export class AgentLoop {
                 content: 'Tool execution was rejected by user',
                 tool_call_id: toolCall.id,
               });
+              // 发送 SSE 事件：工具被拒绝
+              this.config.onSseWrite({
+                type: 'tool',
+                tool: toolCall.name,
+                status: 'rejected',
+                tool_call_id: toolCall.id,
+              });
               continue;
             }
 
             // 执行工具
             const result = await this.executeTool(toolCall);
+            const toolDuration = Date.now() - toolStartTime; // 计算工具执行耗时
+
+            // 发送 SSE 事件：工具执行完成
+            this.config.onSseWrite({
+              type: 'tool',
+              tool: toolCall.name,
+              status: 'complete',
+              output: result.output,
+              isError: result.isError,
+              duration: toolDuration,
+              tool_call_id: toolCall.id,
+            });
 
             // 提取并追踪生成的文件路径
             this.trackGeneratedFiles(toolCall.name, result.output);
+
+            // 记录 completed tool call
+            this.completedToolCalls.push({
+              id: toolCall.id,
+              name: toolCall.name,
+              input: toolCall.input,
+              output: result.output,
+              duration: toolDuration,
+            });
+
+            // 从 pending 中移除
+            this.pendingToolCalls = this.pendingToolCalls.filter(tc => tc.id !== toolCall.id);
 
             this.config.onToolExecute(toolCall, result);
 
@@ -568,6 +718,9 @@ export class AgentLoop {
           ? `Task completed successfully with ${toolCallsCount} tool call(s).`
           : 'Task completed with no output.');
 
+        // 创建 session_end checkpoint
+        await this.createCheckpoint('after_tool_batch', messages, systemPrompt, iterations);
+
         return {
           content: finalContent,
           success: true,
@@ -578,7 +731,9 @@ export class AgentLoop {
         };
       }
 
-      // 达到最大迭代次数
+      // 达到最大迭代次数 - 创建 checkpoint
+      await this.createCheckpoint('max_iterations', messages, systemPrompt, iterations);
+
       return {
         content: 'Max iterations reached',
         success: false,
@@ -589,6 +744,9 @@ export class AgentLoop {
         messages: messages as AgentLoopResult['messages'],
       };
     } catch (error) {
+      // 创建 error checkpoint
+      await this.createCheckpoint('manual', messages, systemPrompt, iterations);
+
       return {
         content: '',
         success: false,

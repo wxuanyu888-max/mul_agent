@@ -74,10 +74,11 @@ export class MemoryIndexManager implements MemorySearchManager {
     this.workspaceDir = options.workspaceDir;
     this.config = options.config;
 
-    // Initialize database
+    // Initialize database - disable if vector is disabled
+    const vectorEnabled = this.config.vector?.enabled ?? true;
     this.db = new MemoryDatabase({
       dbPath: path.join(this.workspaceDir, 'memory.db'),
-      vectorEnabled: this.config.vector?.enabled ?? true,
+      vectorEnabled: vectorEnabled,
     });
   }
 

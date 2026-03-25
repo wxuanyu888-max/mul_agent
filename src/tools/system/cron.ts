@@ -17,10 +17,12 @@ export function createCronTool() {
         task: { type: "string", description: "Task description to remind user" },
         label: { type: "string", description: "Label for the cron job" },
         job_id: { type: "string", description: "Job ID (required for delete action)" },
+        session_id: { type: "string", description: "Session ID to trigger when cron fires (optional)" },
+        agent_id: { type: "string", description: "Agent ID to trigger when cron fires (optional)" },
       },
       required: ["action"],
     },
-    execute: async (_toolCallId: string, params: { action: string; schedule?: string; task?: string; label?: string; job_id?: string }) => {
+    execute: async (_toolCallId: string, params: { action: string; schedule?: string; task?: string; label?: string; job_id?: string; session_id?: string; agent_id?: string }) => {
       try {
         switch (params.action) {
           case "list": {
@@ -42,7 +44,7 @@ export function createCronTool() {
             }
 
             const label = params.label || `Task_${Date.now()}`;
-            const job = manager.createJob(label, params.schedule, params.task);
+            const job = manager.createJob(label, params.schedule, params.task, params.session_id, params.agent_id);
 
             return jsonResult({
               action: "create",
@@ -53,8 +55,12 @@ export function createCronTool() {
                 schedule: job.schedule,
                 task: job.task,
                 nextRun: new Date(job.nextRun).toLocaleString(),
+                sessionId: job.sessionId,
+                agentId: job.agentId,
               },
-              message: `Cron job created: ${label}. Next run at ${new Date(job.nextRun).toLocaleString()}`,
+              message: job.sessionId
+                ? `Cron job created: ${label}. Next run at ${new Date(job.nextRun).toLocaleString()}. Will trigger agent ${job.agentId || 'default'} in session ${job.sessionId}`
+                : `Cron job created: ${label}. Next run at ${new Date(job.nextRun).toLocaleString()}`,
             });
           }
 

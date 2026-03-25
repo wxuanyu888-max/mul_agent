@@ -278,6 +278,36 @@ class TeammateManagerClass {
   }
 
   /**
+   * 更新队友配置（立即生效）
+   */
+  update(name: string, updates: Partial<TeammateConfig>): TeammateInfo | null {
+    // 检查队友是否存在
+    const config = loadConfig();
+    const teammateIdx = config.teammates.findIndex(t => t.name === name);
+
+    if (teammateIdx < 0) {
+      return null;
+    }
+
+    // 更新配置
+    const teammate = config.teammates[teammateIdx];
+    if (updates.role !== undefined) teammate.role = updates.role;
+    if (updates.prompt !== undefined) teammate.prompt = updates.prompt;
+    config.teammates[teammateIdx] = teammate;
+
+    // 保存到文件
+    saveConfig(config);
+
+    // 如果内存中有，更新内存
+    const entry = this.teammates.get(name);
+    if (entry) {
+      entry.info = teammate;
+    }
+
+    return teammate;
+  }
+
+  /**
    * 获取队友状态
    */
   getStatus(name: string): TeammateInfo | undefined {
@@ -409,4 +439,9 @@ export function broadcastToTeammates(sender: string, content: string): string {
 export function checkTeammateInbox(name: string): string {
   const manager = getTeammateManager();
   return manager.checkInbox(name);
+}
+
+export function updateTeammate(name: string, updates: Partial<TeammateConfig>): TeammateInfo | null {
+  const manager = getTeammateManager();
+  return manager.update(name, updates);
 }

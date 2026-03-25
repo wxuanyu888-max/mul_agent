@@ -172,6 +172,8 @@ export interface IntegrationFormData {
 }
 
 // Chat Message Types
+export type AttachmentStatus = 'pending' | 'uploading' | 'parsing' | 'done' | 'error';
+
 export interface Attachment {
   id: string;
   filename: string;
@@ -179,6 +181,10 @@ export interface Attachment {
   mimeType: string;
   size: number;
   url?: string;
+  // 解析状态
+  status?: AttachmentStatus;
+  extractedText?: string;
+  error?: string;
 }
 
 export interface Message {
@@ -186,6 +192,8 @@ export interface Message {
   content: string;
   timestamp: number;
   attachments?: Attachment[];
+  agentId?: string;      // 广播模式下表示是哪个 agent 的回复
+  agentName?: string;    // agent 的显示名称
 }
 
 export interface ApiMessage {

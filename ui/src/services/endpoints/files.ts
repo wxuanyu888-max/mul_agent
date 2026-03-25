@@ -15,6 +15,16 @@ export interface FileMetadata {
   createdAt: string;
 }
 
+// File extraction result
+export interface ExtractResult {
+  success: boolean;
+  data?: {
+    content: string;
+    charCount: number;
+  };
+  error?: string;
+}
+
 interface UploadResponse {
   success: boolean;
   data?: FileMetadata;
@@ -28,7 +38,7 @@ interface MetadataResponse {
 }
 
 /**
- * Upload a file (image or PDF)
+ * Upload a file (image, PDF, or markdown)
  */
 export async function uploadFile(file: File): Promise<FileMetadata> {
   const formData = new FormData();
@@ -46,6 +56,30 @@ export async function uploadFile(file: File): Promise<FileMetadata> {
   }
 
   return result.data;
+}
+
+/**
+ * Extract text content from a file
+ */
+export async function extractFileContent(fileId: string): Promise<ExtractResult> {
+  try {
+    const response = await fetch(`/api/v1/files/${fileId}/extract`);
+    const result: ExtractResult = await response.json();
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || 'Extract failed'
+      };
+    }
+
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Extract failed'
+    };
+  }
 }
 
 /**
@@ -79,7 +113,10 @@ export function isAllowedFileType(file: File): boolean {
     'image/jpg',
     'image/gif',
     'image/webp',
-    'application/pdf'
+    'application/pdf',
+    'text/markdown',
+    'text/x-markdown',
+    'text/plain'
   ];
   return allowedTypes.includes(file.type);
 }

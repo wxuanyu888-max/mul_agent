@@ -12,6 +12,7 @@
 import { useState, useEffect } from 'react';
 import { GitBranch, RotateCcw, ChevronDown, ChevronRight, Trash2, Plus, X, ArrowRight, History } from 'lucide-react';
 import { checkpointApi, type CheckpointBrief, type Branch } from '../../services/api';
+import { chatApi } from '../../services/api';
 
 interface CheckpointDetail {
   messages: unknown[];
@@ -20,10 +21,38 @@ interface CheckpointDetail {
 }
 
 interface CheckpointPanelProps {
-  sessionId: string;
+  sessionId?: string;
 }
 
-export function CheckpointPanel({ sessionId }: CheckpointPanelProps) {
+export function CheckpointPanel({ sessionId: propSessionId }: CheckpointPanelProps) {
+  // 优先使用 props 传入的 sessionId，否则从 localStorage 获取
+  const [sessionId, setSessionId] = useState<string>(() => {
+    if (propSessionId) return propSessionId;
+    return localStorage.getItem('chat_currentSessionId') || '';
+  });
+
+  // 当 sessionId 为空时，从后端获取最近的 session
+  const [initialized, setInitialized] = useState(false);
+  useEffect(() => {
+    if (!initialized && !sessionId) {
+      setInitialized(true);
+      const fetchRecentSession = async () => {
+        try {
+          const res = await chatApi.getSessions();
+          const sessions = res.data.sessions || [];
+          if (sessions.length > 0) {
+            const recentSessionId = sessions[0].session_id;
+            setSessionId(recentSessionId);
+            localStorage.setItem('chat_currentSessionId', recentSessionId);
+          }
+        } catch (err) {
+          console.error('[CheckpointPanel] Failed to fetch recent session:', err);
+        }
+      };
+      fetchRecentSession();
+    }
+  }, [initialized, sessionId]);
+
   const [checkpoints, setCheckpoints] = useState<CheckpointBrief[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<string | null>(null);
@@ -37,14 +66,54 @@ export function CheckpointPanel({ sessionId }: CheckpointPanelProps) {
   const [compareTo, setCompareTo] = useState('');
   const [compareResult, setCompareResult] = useState<{ added: unknown[]; removed: unknown[]; modified: unknown[] } | null>(null);
 
-  // 加载数据
-  const loadData = async () => {
+  // 监听 localStorage 变化（跨 Tab 同步）
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const localSessionId = localStorage.getItem('chat_currentSessionId') || '';
+      setSessionId(localSessionId);
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // 轮询 localStorage 变化（同一个 Tab 内不会触发 storage 事件）
+    const pollInterval = setInterval(() => {
+      const localSessionId = localStorage.getItem('chat_currentSessionId') || '';
+      setSessionId(prev => {
+        if (prev !== localSessionId) {
+          return localSessionId;
+        }
+        return prev;
+      });
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(pollInterval);
+    };
+  }, []);
+
+  // 当 sessionId 变化时重新加载数据
+  useEffect(() => {
+    console.log('[CheckpointPanel] sessionId changed:', sessionId);
+    if (sessionId) {
+      loadData(sessionId);
+    } else {
+      setCheckpoints([]);
+      setBranches([]);
+      setLoading(false);
+    }
+  }, [sessionId]);
+
+  // 加载数据 - 使用闭包避免 stale sessionId
+  const loadData = async (sid: string) => {
+    console.log('[CheckpointPanel] loadData called with sessionId:', sid);
     setLoading(true);
     try {
       const [cpRes, branchRes] = await Promise.all([
-        checkpointApi.searchCheckpoints(sessionId),
-        checkpointApi.getBranches(sessionId),
+        checkpointApi.searchCheckpoints(sid),
+        checkpointApi.getBranches(sid),
       ]);
+      console.log('[CheckpointPanel] checkpoints response:', cpRes.data);
+      console.log('[CheckpointPanel] branches response:', branchRes.data);
       setCheckpoints(cpRes.data.checkpoints || []);
       setBranches(branchRes.data.branches || []);
     } catch (err) {
@@ -53,12 +122,6 @@ export function CheckpointPanel({ sessionId }: CheckpointPanelProps) {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (sessionId) {
-      loadData();
-    }
-  }, [sessionId]);
 
   // 加载详情
   useEffect(() => {
@@ -71,11 +134,12 @@ export function CheckpointPanel({ sessionId }: CheckpointPanelProps) {
 
   // 时间旅行
   const handleTimeTravel = async (checkpointId: string) => {
+    if (!sessionId) return;
     if (!confirm('确定要时间旅行到这个检查点吗？当前状态将会改变。')) return;
     try {
       await checkpointApi.timeTravel(sessionId, { checkpointId });
       alert('时间旅行成功！');
-      loadData();
+      loadData(sessionId);
     } catch (err) {
       alert(`时间旅行失败: ${err}`);
     }
@@ -83,7 +147,7 @@ export function CheckpointPanel({ sessionId }: CheckpointPanelProps) {
 
   // 创建分支
   const handleCreateBranch = async () => {
-    if (!newBranch.name || !newBranch.fromCheckpointId) return;
+    if (!sessionId || !newBranch.name || !newBranch.fromCheckpointId) return;
     try {
       await checkpointApi.createBranch(sessionId, {
         name: newBranch.name,
@@ -91,7 +155,7 @@ export function CheckpointPanel({ sessionId }: CheckpointPanelProps) {
       });
       setShowBranchModal(false);
       setNewBranch({ name: '', fromCheckpointId: '' });
-      loadData();
+      loadData(sessionId);
     } catch (err) {
       alert(`创建分支失败: ${err}`);
     }

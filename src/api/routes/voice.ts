@@ -32,7 +32,15 @@ router.post('/asr', async (req: Request, res: Response) => {
     const audioBuffer = Buffer.from(audio, 'base64');
 
     // 识别
-    const result = await asrService.recognize(audioBuffer);
+    let result;
+    try {
+      result = await asrService.recognize(audioBuffer);
+    } catch (err) {
+      return res.status(500).json({
+        error: `ASR recognition failed: ${err instanceof Error ? err.message : String(err)}`,
+        details: 'Please check your audio format or try a different ASR provider'
+      });
+    }
 
     res.json({
       text: result.text,

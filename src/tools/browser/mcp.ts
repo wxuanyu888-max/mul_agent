@@ -70,7 +70,8 @@ async function callMcpTool(toolName: string, args: Record<string, unknown>, retr
       resetMcpClient();
       return callMcpTool(toolName, args, false);
     }
-    throw error;
+    // 返回错误信息而不是抛出，让外层 try-catch 处理
+    return { error: error instanceof Error ? error.message : String(error), isError: true };
   }
 }
 

@@ -18,10 +18,11 @@ const DEFAULT_WORKSPACE_DIR = 'memory/memory';
 // Default memory search configuration
 const DEFAULT_MEMORY_CONFIG: MemorySearchConfig = {
   enabled: true,
-  provider: 'auto',
-  model: 'text-embedding-3-small',
+  provider: 'ollama',
+  model: 'nomic-embed-text',
   sources: ['memory', 'sessions'],
-  fallback: 'none',
+  extraPaths: ['/Users/agent/PycharmProjects/mul_agent/docs_development'],
+  fallback: 'offline',
   vector: {
     enabled: true,
   },

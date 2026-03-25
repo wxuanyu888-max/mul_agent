@@ -391,8 +391,17 @@ export function ChatPanel() {
         }))
       );
       setCurrentSessionId(sessionId);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load session messages:', err);
+      // 如果是 404 (Session not found)，清除无效的 session
+      if (err?.response?.status === 404) {
+        console.log('Session not found, clearing invalid sessionId');
+        setMessages([]);
+        setCurrentSessionId('');
+        localStorage.removeItem('chat_currentSessionId');
+        // 尝试加载一个有效的 session
+        loadSessions();
+      }
     }
   };
 
@@ -441,7 +450,7 @@ export function ChatPanel() {
     const validFiles = files.filter(file => isAllowedFileType(file));
 
     if (validFiles.length === 0) {
-      alert('不支持的文件类型。请上传图片（PNG、JPG、GIF、WebP）或 PDF 文件。');
+      alert('不支持的文件类型。请上传图片（PNG、JPG、GIF、WebP）、PDF 或 Markdown (.md) 文件。');
       return;
     }
 
@@ -507,6 +516,10 @@ export function ChatPanel() {
             id: a.id,
             type: a.mimeType.startsWith('image/') ? 'image' : 'document',
             url: a.url,
+            originalName: a.originalName,
+            mimeType: a.mimeType,
+            // 传递提取的文本内容给后端
+            extractedText: a.extractedText,
           })) : undefined,
         }),
       });
@@ -536,6 +549,71 @@ export function ChatPanel() {
 
               // Handle different event types
               switch (event.type) {
+                case 'tool':
+                  // 后端发送的工具执行事件
+                  // 格式: { type: 'tool', tool: string, status: 'start'|'complete'|'rejected', input?, output?, duration? }
+                  setExecutionSteps((prev) => {
+                    const existingToolStep = prev.find(
+                      (s) => s.type === 'tool' && s.title === `执行 ${event.tool}` && s.status === 'running'
+                    );
+
+                    if (event.status === 'start') {
+                      // 工具开始执行 - 添加新步骤
+                      if (existingToolStep) {
+                        return prev; // 已存在，跳过
+                      }
+                      return [
+                        ...prev,
+                        {
+                          id: event.tool_call_id || `tool-${Date.now()}`,
+                          type: 'tool',
+                          status: 'running',
+                          title: `执行 ${event.tool}`,
+                          details: event.input,
+                          timestamp: Date.now(),
+                        },
+                      ];
+                    } else if (event.status === 'complete') {
+                      // 工具执行完成 - 更新现有步骤
+                      if (existingToolStep) {
+                        return prev.map((step) =>
+                          step.id === existingToolStep.id
+                            ? {
+                                ...step,
+                                status: event.isError ? 'error' : 'completed',
+                                details: event.output,
+                                duration: event.duration,
+                              }
+                            : step
+                        );
+                      }
+                      // 如果没有找到运行中的步骤，添加完成状态（处理后端直接发 complete 的情况）
+                      return [
+                        ...prev,
+                        {
+                          id: event.tool_call_id || `tool-${Date.now()}`,
+                          type: 'tool',
+                          status: event.isError ? 'error' : 'completed',
+                          title: `执行 ${event.tool}`,
+                          details: event.output,
+                          duration: event.duration,
+                          timestamp: Date.now(),
+                        },
+                      ];
+                    } else if (event.status === 'rejected') {
+                      // 工具被拒绝
+                      if (existingToolStep) {
+                        return prev.map((step) =>
+                          step.id === existingToolStep.id
+                            ? { ...step, status: 'error', description: 'Tool execution was rejected by user' }
+                            : step
+                        );
+                      }
+                    }
+                    return prev;
+                  });
+                  break;
+
                 case 'status':
                   // Add status update as an execution step
                   setExecutionSteps((prev) => {
@@ -657,6 +735,21 @@ export function ChatPanel() {
                   }
                   break;
 
+                case 'agent_response':
+                  // 广播模式下的单个 agent 响应
+                  // 作为单独的消息显示，带有 agent 名字
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      role: 'assistant',
+                      content: event.response,
+                      agentId: event.agent_id,
+                      agentName: event.agent_name,
+                      timestamp: Date.now(),
+                    },
+                  ]);
+                  break;
+
                 case 'error':
                   setExecutionSteps((prev) => [
                     ...prev,
@@ -698,35 +791,9 @@ export function ChatPanel() {
 
       // Add assistant response to messages
       if (finalResponse) {
-        // Check if response contains tool_calls JSON
-        let displayContent = finalResponse;
-        try {
-          const parsed = JSON.parse(finalResponse);
-          if (parsed.tool_calls && Array.isArray(parsed.tool_calls)) {
-            // Response contains tool_calls - don't display the raw JSON
-            // Instead, add tool execution steps
-            for (const tc of parsed.tool_calls) {
-              const toolName = tc.name || tc.function?.name || 'unknown';
-              const toolInput = tc.input || tc.function?.arguments || {};
-              const toolId = tc.id || `tool-${Date.now()}`;
-              setExecutionSteps((prev) => [
-                ...prev,
-                {
-                  id: toolId,
-                  type: 'tool',
-                  status: 'completed',
-                  title: `Tool: ${toolName}`,
-                  description: typeof toolInput === 'string' ? toolInput : JSON.stringify(toolInput).slice(0, 200),
-                  timestamp: Date.now(),
-                },
-              ]);
-            }
-            // Don't show the raw JSON in the chat
-            displayContent = '[Tool calls executed]';
-          }
-        } catch {
-          // Not JSON, display as-is
-        }
+        // 后端闭环后，直接显示最终响应，不再解析 tool_calls
+        // tool_calls 的展示已由后端通过 'tool' 事件控制
+        const displayContent = finalResponse;
 
         const assistantMessage: Message = {
           role: 'assistant',
@@ -740,11 +807,22 @@ export function ChatPanel() {
       if (conversationId && currentSessionId !== conversationId) {
         setCurrentSessionId(conversationId);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to send message:', err);
+
+      // 检测 429 错误并返回友好消息
+      let errorContent = 'Failed to get response from agent';
+      if (err?.response?.status === 429) {
+        errorContent = '当前请求过多，请稍后再试（Rate limit exceeded）';
+      } else if (err?.response?.data?.error?.message) {
+        errorContent = `错误: ${err.response.data.error.message}`;
+      } else if (err instanceof Error) {
+        errorContent = `错误: ${err.message}`;
+      }
+
       const errorMessage: Message = {
         role: 'assistant',
-        content: `Error: ${err instanceof Error ? err.message : 'Failed to get response from agent'}`,
+        content: errorContent,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -1056,8 +1134,9 @@ export function ChatPanel() {
               onChange={(e) => setSelectedAgent(e.target.value)}
               className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value="">All Agents</option>
-              {agents.map((agent) => (
+              <option value="__all__">All Agents (广播)</option>
+              <option value="core_brain">Core Brain</option>
+              {agents.filter(a => a.agent_id !== 'core_brain').map((agent) => (
                 <option key={agent.agent_id} value={agent.agent_id}>
                   {agent.name}
                 </option>
@@ -1097,6 +1176,7 @@ export function ChatPanel() {
           <div className="space-y-4">
             {messages.map((msg, index) => {
               const isUser = msg.role === 'user';
+              const isAgentResponse = !isUser && msg.agentName;  // 广播模式下的 agent 回复
               return (
                 <div
                   key={index}
@@ -1106,11 +1186,18 @@ export function ChatPanel() {
                     className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       isUser
                         ? 'bg-gradient-to-br from-blue-100 to-blue-200'
+                        : isAgentResponse
+                        ? 'bg-gradient-to-br from-green-100 to-green-200'
                         : 'bg-gradient-to-br from-purple-100 to-purple-200'
                     }`}
                   >
                     {isUser ? (
                       <User className="w-4 h-4 text-blue-600" />
+                    ) : isAgentResponse ? (
+                      // 显示 agent 名字的首字母
+                      <span className="w-4 h-4 text-xs font-bold text-green-600">
+                        {msg.agentName?.charAt(0).toUpperCase()}
+                      </span>
                     ) : (
                       <Bot className="w-4 h-4 text-purple-600" />
                     )}
@@ -1122,6 +1209,11 @@ export function ChatPanel() {
                         : 'bg-white border border-gray-200 text-gray-900 rounded-bl-none shadow-sm'
                     }`}
                   >
+                    {isAgentResponse && (
+                      <div className="text-xs font-medium text-green-600 mb-1">
+                        {msg.agentName}
+                      </div>
+                    )}
                     {isUser ? (
                       <>
                         <p className="text-sm whitespace-pre-wrap">{msg.content}</p>

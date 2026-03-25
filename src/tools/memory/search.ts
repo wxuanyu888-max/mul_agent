@@ -11,9 +11,9 @@ import path from "node:path";
  */
 const DEFAULT_CONFIG: MemorySearchConfig = {
   enabled: true,
-  provider: 'auto',
-  model: 'BAAI/bge-small-zh-v1.5',
-  fallback: 'none',
+  provider: 'ollama',
+  model: 'nomic-embed-text',
+  fallback: 'offline',
   vector: {
     enabled: true,
   },
@@ -21,6 +21,7 @@ const DEFAULT_CONFIG: MemorySearchConfig = {
     enabled: true,
   },
   sources: ['memory', 'sessions'],
+  extraPaths: ['/Users/agent/PycharmProjects/mul_agent/docs_development'],
 };
 
 /**

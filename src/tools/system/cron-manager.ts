@@ -7,6 +7,13 @@ import * as path from 'path';
 import { notificationSystem } from './notification.js';
 import { getCronPath } from '../../utils/path.js';
 
+// SSE 事件发送函数（延迟导入以避免循环依赖）
+let sendSSEToCronSession: ((eventType: string, data: Record<string, unknown>) => void) | null = null;
+
+export function setCronSSECallback(callback: (eventType: string, data: Record<string, unknown>) => void): void {
+  sendSSEToCronSession = callback;
+}
+
 export interface CronJob {
   id: string;
   label: string;
@@ -15,6 +22,8 @@ export interface CronJob {
   createdAt: number;
   nextRun: number; // 下次执行时间
   enabled: boolean;
+  sessionId?: string; // 关联的 session ID（可选）
+  agentId?: string; // 关联的 agent ID（可选）
 }
 
 // Cron 表达式解析 (简化版)
@@ -22,7 +31,7 @@ export interface CronJob {
 // 例如: "50 22 * * *" = 每天 22:50
 function parseCronExpression(schedule: string, now: number): number {
   const parts = schedule.split(' ');
-  if (parts.length !== 5) return now + 3600000; // 无效则 1 小时后
+  if (parts.length !== 5) return now + 60000; // 无效则 1 分钟后
 
   const [min, hour, day, month, dow] = parts;
   const date = new Date(now);
@@ -31,17 +40,23 @@ function parseCronExpression(schedule: string, now: number): number {
   date.setSeconds(0, 0);
 
   // 解析分钟
-  if (min !== '*') {
-    date.setMinutes(parseInt(min));
-  } else {
-    date.setMinutes(0);
+  if (min === '*') {
+    // * 表示每分钟，返回当前时间 + 1 分钟
+    return now + 60000;
   }
+
+  // 设置目标分钟
+  const targetMin = parseInt(min);
+  date.setMinutes(targetMin);
 
   // 解析小时
   if (hour !== '*') {
     date.setHours(parseInt(hour));
   } else {
-    date.setHours(date.getHours());
+    // 如果小时是 *，当前小时已过则加1小时
+    if (date.getTime() <= now) {
+      date.setHours(date.getHours() + 1);
+    }
   }
 
   // 解析日期（可选）
@@ -54,7 +69,7 @@ function parseCronExpression(schedule: string, now: number): number {
     date.setMonth(parseInt(month) - 1); // 月份从 0 开始
   }
 
-  // 如果设置的时间已经过去，推到下一天
+  // 如果设置的时间已经过去（不管是分钟还是小时的问题），推到下一天
   if (date.getTime() <= now) {
     date.setDate(date.getDate() + 1);
   }
@@ -108,7 +123,7 @@ export class CronManager {
     }
   }
 
-  createJob(label: string, schedule: string, task: string): CronJob {
+  createJob(label: string, schedule: string, task: string, sessionId?: string, agentId?: string): CronJob {
     const id = `cron_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Date.now();
 
@@ -120,6 +135,8 @@ export class CronManager {
       createdAt: now,
       nextRun: parseCronExpression(schedule, now),
       enabled: true,
+      sessionId,
+      agentId,
     };
 
     this.jobs.set(id, job);
@@ -189,6 +206,19 @@ export class CronManager {
 
         // 发送通知
         notificationSystem.add('cron', job.label, job.task);
+
+        // 通过 SSE 发送事件给前端
+        if (sendSSEToCronSession) {
+          sendSSEToCronSession('cron_notification', {
+            id: job.id,
+            label: job.label,
+            task: job.task,
+            scheduledFor: new Date(now).toISOString(),
+            nextRun: new Date(job.nextRun).toLocaleString(),
+            sessionId: job.sessionId,
+            agentId: job.agentId,
+          });
+        }
 
         // 触发回调
         for (const callback of this.callbacks) {

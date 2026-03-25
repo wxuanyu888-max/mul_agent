@@ -8,11 +8,13 @@ import fs from 'fs/promises';
 import crypto from 'crypto';
 import multer from 'multer';
 import { getSessionsPath } from '../../utils/path.js';
+import { storeFileContent } from '../../services/fileMemory.js';
 
 // Allowed file types
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
 const ALLOWED_DOCUMENT_TYPES = ['application/pdf'];
-const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES];
+const ALLOWED_MARKDOWN_TYPES = ['text/markdown', 'text/x-markdown', 'text/plain'];
+const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES, ...ALLOWED_MARKDOWN_TYPES];
 
 // Max file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -46,17 +48,23 @@ export function createFilesRouter(): Router {
       fileSize: MAX_FILE_SIZE
     },
     fileFilter: (req, file, cb) => {
-      if (ALLOWED_TYPES.includes(file.mimetype)) {
+      const ext = (file.originalname || '').toLowerCase().split('.').pop();
+      const isAllowedByType = ALLOWED_TYPES.includes(file.mimetype);
+      const isAllowedByExt = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'md', 'txt'].includes(ext);
+
+      if (isAllowedByType || isAllowedByExt) {
         cb(null, true);
       } else {
-        cb(new Error('File type not allowed'));
+        cb(null, false);
       }
     }
   });
 
   router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
+    console.log('[FileUpload] Route hit, files:', req.files);
     try {
       const file = (req as any).file;
+      console.log('[FileUpload] File from multer:', file);
       if (!file) {
         return res.status(400).json({
           success: false,
@@ -75,9 +83,15 @@ export function createFilesRouter(): Router {
   });
 
   async function handleFileUpload(file: any, res: Response) {
-    // Validate file type
+    // Validate file type - check both mimeType and extension
     const mimeType = file.mimetype || file.type;
-    if (!ALLOWED_TYPES.includes(mimeType)) {
+    const originalName = file.originalname || file.name || '';
+    const ext = originalName.toLowerCase().split('.').pop();
+
+    const allowedByMime = ALLOWED_TYPES.includes(mimeType);
+    const allowedByExt = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'md', 'txt'].includes(ext);
+
+    if (!allowedByMime && !allowedByExt) {
       return res.status(400).json({
         success: false,
         error: `File type not allowed. Allowed types: ${ALLOWED_TYPES.join(', ')}`
@@ -107,6 +121,9 @@ export function createFilesRouter(): Router {
         await fs.copyFile(file.path, filepath);
         // Optionally remove original
         await fs.unlink(file.path).catch(() => {});
+      } else if (file.buffer) {
+        // Data is in memory (multer with memoryStorage)
+        await fs.writeFile(filepath, Buffer.from(file.buffer));
       } else if (file.data) {
         // Data is in memory (express-fileupload)
         await fs.writeFile(filepath, file.data);
@@ -144,7 +161,7 @@ export function createFilesRouter(): Router {
    * GET /api/v1/files/:fileId
    * Get file by ID
    */
-  router.get('/files/:fileId', async (req: Request, res: Response) => {
+  router.get('/:fileId', async (req: Request, res: Response) => {
     try {
       const { fileId } = req.params;
 
@@ -170,6 +187,8 @@ export function createFilesRouter(): Router {
       else if (['.gif'].includes(ext)) mimeType = 'image/gif';
       else if (['.webp'].includes(ext)) mimeType = 'image/webp';
       else if (['.pdf'].includes(ext)) mimeType = 'application/pdf';
+      else if (['.md'].includes(ext)) mimeType = 'text/markdown';
+      else if (['.txt'].includes(ext)) mimeType = 'text/plain';
 
       // Set appropriate headers
       res.setHeader('Content-Type', mimeType);
@@ -192,7 +211,7 @@ export function createFilesRouter(): Router {
    * GET /api/v1/files/:fileId/metadata
    * Get file metadata only
    */
-  router.get('/files/:fileId/metadata', async (req: Request, res: Response) => {
+  router.get('/:fileId/metadata', async (req: Request, res: Response) => {
     try {
       const { fileId } = req.params;
 
@@ -218,6 +237,8 @@ export function createFilesRouter(): Router {
       else if (['.gif'].includes(ext)) mimeType = 'image/gif';
       else if (['.webp'].includes(ext)) mimeType = 'image/webp';
       else if (['.pdf'].includes(ext)) mimeType = 'application/pdf';
+      else if (['.md'].includes(ext)) mimeType = 'text/markdown';
+      else if (['.txt'].includes(ext)) mimeType = 'text/plain';
 
       const metadata: FileMetadata = {
         id: fileId,
@@ -238,6 +259,92 @@ export function createFilesRouter(): Router {
       res.status(500).json({
         success: false,
         error: 'Failed to get file metadata'
+      });
+    }
+  });
+
+  /**
+   * GET /api/v1/files/:fileId/extract
+   * Extract text content from a file
+   */
+  router.get('/:fileId/extract', async (req: Request, res: Response) => {
+    try {
+      const { fileId } = req.params;
+
+      // Find file in uploads directory
+      const files = await fs.readdir(uploadsDir);
+      const targetFile = files.find(f => f.startsWith(fileId));
+
+      if (!targetFile) {
+        return res.status(404).json({
+          success: false,
+          error: 'File not found'
+        });
+      }
+
+      const filepath = path.join(uploadsDir, targetFile);
+      const ext = path.extname(targetFile).toLowerCase();
+
+      // Check if file is an image - images don't need text extraction (LLM handles via URL)
+      const isImage = ['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext);
+      if (isImage) {
+        return res.json({
+          success: true,
+          data: {
+            content: '',
+            charCount: 0,
+            note: 'Image files are processed directly by the LLM via URL'
+          }
+        });
+      }
+
+      // Handle different file types
+      let content = '';
+      if (ext === '.pdf') {
+        // Use pdf-parse for PDF files
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pdfParse = await import('pdf-parse') as any;
+        const dataBuffer = await fs.readFile(filepath);
+        // Try to use the PDFParse class directly for v2.x
+        try {
+          const parser = new pdfParse.PDFParse();
+          const data = await parser(dataBuffer);
+          content = data.text || '';
+        } catch (parseError) {
+          console.error('[FileExtract] PDF parse error:', parseError);
+          content = '';
+        }
+      } else if (['.md', '.txt'].includes(ext) || ext === '.text/markdown') {
+        // Read text files directly
+        content = await fs.readFile(filepath, 'utf-8');
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: `Unsupported file type: ${ext}`
+        });
+      }
+
+      // 存储到向量数据库（非图片文件）
+      if (content && content.trim().length > 0) {
+        try {
+          await storeFileContent(fileId, content, targetFile);
+        } catch (error) {
+          console.error('[FileExtract] Failed to store in vector DB:', error);
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          content,
+          charCount: content.length
+        }
+      });
+    } catch (error) {
+      console.error('Error extracting file content:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to extract file content'
       });
     }
   });

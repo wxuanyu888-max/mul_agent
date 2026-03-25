@@ -36,6 +36,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { infoApi, logsApi } from '../../services/api';
+import { teammatesApi } from '../../services/endpoints/teammates';
 import { ProjectSwitcher } from '../project/ProjectSwitcher';
 import type { Interaction, InteractionHistoryModalProps } from '../../types';
 
@@ -364,6 +365,11 @@ function AgentDetailsModal({ agentId, agentType, projectId, onClose }: AgentDeta
   const [activeTab, setActiveTab] = useState<'soul' | 'role' | 'skill' | 'memory' | 'work' | 'logs'>('soul');
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  // 编辑状态
+  const [isEditing, setIsEditing] = useState(false);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [editRole, setEditRole] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -401,6 +407,31 @@ function AgentDetailsModal({ agentId, agentType, projectId, onClose }: AgentDeta
     { id: 'work', label: 'Current Work', icon: Play },
     { id: 'logs', label: 'Logs', icon: BookOpen },
   ];
+
+  // 保存编辑的 prompt
+  const handleSaveEdit = async () => {
+    if (!agentId) return;
+    setIsSaving(true);
+    try {
+      await teammatesApi.update(agentId, {
+        prompt: editPrompt,
+        role: editRole || undefined,
+      });
+      // 更新本地状态
+      setDetails((prev: any) => ({
+        ...prev,
+        soul: editPrompt,
+        role: editRole || prev.role,
+      }));
+      setIsEditing(false);
+      alert('保存成功！');
+    } catch (error) {
+      console.error('Failed to save prompt:', error);
+      alert('保存失败: ' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // 渲染当前工作面板
   const renderWorkPanel = () => {
@@ -607,6 +638,54 @@ function AgentDetailsModal({ agentId, agentType, projectId, onClose }: AgentDeta
             renderWorkPanel()
           ) : activeTab === 'logs' ? (
             renderLogsPanel()
+          ) : activeTab === 'soul' ? (
+            <div className="space-y-4">
+              {/* Soul/Prompt 编辑区域 */}
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">System Prompt</label>
+                {!isEditing ? (
+                  <button
+                    onClick={() => {
+                      setEditPrompt(details?.soul || '');
+                      setEditRole(details?.role || '');
+                      setIsEditing(true);
+                    }}
+                    className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                  >
+                    编辑
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={isSaving}
+                      className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors disabled:opacity-50"
+                    >
+                      {isSaving ? '保存中...' : '保存'}
+                    </button>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      disabled={isSaving}
+                      className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    >
+                      取消
+                    </button>
+                  </div>
+                )}
+              </div>
+              {isEditing ? (
+                <textarea
+                  value={editPrompt}
+                  onChange={(e) => setEditPrompt(e.target.value)}
+                  className="w-full h-64 p-3 border border-gray-300 rounded-lg font-mono text-xs resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="输入 System Prompt..."
+                />
+              ) : (
+                <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs bg-gray-50 p-4 rounded-lg overflow-x-auto">
+                  {details?.soul || 'No content available'}
+                </pre>
+              )}
+            </div>
           ) : (
             <div className="prose prose-sm max-w-none">
               <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs bg-gray-50 p-4 rounded-lg overflow-x-auto">

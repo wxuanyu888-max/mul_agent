@@ -3,6 +3,8 @@
  */
 
 import { Router, Request, Response } from 'express';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 // 全局 Agent 运行状态
 interface WorkflowState {
@@ -125,14 +127,100 @@ export function createInfoRouter(): Router {
     res.json({ runs: [] });
   });
 
-  // GET /info/agent-team
+  // GET /info/agent-team - 从 config.json 加载 teammates
   router.get('/info/agent-team', (req: Request, res: Response) => {
-    res.json(agentTeamState);
+    // 尝试从 teammates config.json 加载
+    const configPath = path.join(process.cwd(), 'storage', 'teammates', 'config.json');
+    let teammatesAgents: AgentTeamState['agents'] = [];
+
+    try {
+      if (fs.existsSync(configPath)) {
+        const configData = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        const teammates = configData.teammates || [];
+
+        // 转换为 agents 格式
+        teammatesAgents = teammates.map((t: { name: string; role: string; status: string }) => ({
+          agent_id: t.name,
+          name: t.name,
+          description: t.role || '',
+          role: t.role || '',
+          status: t.status?.toLowerCase() || 'idle',
+        }));
+      }
+    } catch (error) {
+      console.error('[InfoAPI] Failed to load teammates config:', error);
+    }
+
+    // Core Brain 始终显示
+    const coreAgent: AgentTeamState['agents'][0] = {
+      agent_id: 'core_brain',
+      name: 'Core Brain',
+      description: 'Central Coordinator',
+      role: 'coordinator',
+      status: 'idle',
+    };
+
+    // 合并 Core Brain 和 teammates
+    const agents = [coreAgent, ...teammatesAgents];
+
+    res.json({
+      agents,
+      active_sub_agents: agentTeamState.active_sub_agents,
+      current_task: agentTeamState.current_task,
+    });
   });
 
   // GET /info/agent/:agent_id/details
   router.get('/info/agent/:agent_id/details', (req: Request, res: Response) => {
     const agent_id = req.params.agent_id as string;
+
+    // 如果是 Core Brain，返回默认配置
+    if (agent_id === 'core_brain') {
+      res.json({
+        agent_id,
+        name: 'Core Brain',
+        description: 'Central Coordinator',
+        role: 'coordinator',
+        soul: '你是中央协调者，负责协调多个 agent 完成复杂任务。',
+        skill: '',
+        memory: '',
+        current_task: null,
+        sub_agents: [],
+        status: 'inactive',
+        project_id: req.query.project_id || undefined
+      });
+      return;
+    }
+
+    // 尝试从 teammates config 读取
+    const configPath = path.join(process.cwd(), 'storage', 'teammates', 'config.json');
+    try {
+      if (fs.existsSync(configPath)) {
+        const configData = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        const teammate = configData.teammates?.find((t: { name: string }) => t.name === agent_id);
+
+        if (teammate) {
+          res.json({
+            agent_id: teammate.name,
+            name: teammate.name,
+            description: teammate.role || '',
+            role: teammate.role || '',
+            soul: teammate.prompt || '',
+            skill: '',
+            memory: '',
+            current_task: null,
+            sub_agents: [],
+            status: teammate.status?.toLowerCase() || 'inactive',
+            project_id: req.query.project_id || undefined
+          });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('[InfoAPI] Failed to load teammate config:', error);
+    }
+
+    // 默认返回空
     res.json({
       agent_id,
       name: agent_id,

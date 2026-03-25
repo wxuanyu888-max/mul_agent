@@ -33,6 +33,11 @@ import { createMemoryRouter as createFullMemoryRouter } from '../memory/routes.j
 // Initialize plugins
 import { initializePlugins, type PluginRegistry } from '../plugins/index.js';
 
+// Cron 通知事件发射器
+import { EventEmitter } from 'events';
+const cronNotificationEmitter = new EventEmitter();
+export { cronNotificationEmitter };
+
 let pluginRegistry: PluginRegistry;
 const app: ReturnType<typeof express> = express();
 const PORT = process.env.PORT || 8080;
