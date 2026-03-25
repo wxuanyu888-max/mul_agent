@@ -411,6 +411,7 @@ function loadAllModules(context: BuildContext): Record<string, string> {
     silent_replies: loadModule('silent-replies'),
     reactions: loadModule('reactions'),
     reasoning_format: loadModule('reasoning-format'),
+    task_guide: loadModule('task'),
 
     // 动态占位符（需要运行时数据）
     owner_info: '',

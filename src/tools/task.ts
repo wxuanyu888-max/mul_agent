@@ -38,15 +38,17 @@ export function createTaskTool(): TaskTool {
     name: 'task',
     description: `Task management - Create and manage subtasks.
 
-## 交接文档要求（必须遵守）
-每次调用 task 工具前，必须使用 memory 工具的 write 功能写入 handover 类型的记忆，包含：
-- task_goal: 任务目标
-- completed_steps: 已完成的步骤（列表）
-- pending_steps: 待完成的步骤（列表）
-- key_context: 关键上下文（文件路径、配置等）
-- constraints: 约束条件
+Use this tool to delegate complex tasks to sub-agents for parallel execution.
 
-请先写入 handover，再调用 task。
+## When to use
+- Complex tasks that can be broken into independent subtasks
+- Multiple files need to be processed simultaneously
+- Search/replace operations across different code areas
+
+## Best practices
+- Provide clear task descriptions
+- Set appropriate maxIterations based on complexity (default: 20)
+- Sub-agents will return summarized results
 
 Available actions:
 - task: Create and run a new subtask

@@ -15,6 +15,9 @@
 # 函数调用规范
 {{tool_call_style}}
 
+# 子任务派发
+{{task_guide}}
+
 # 安全规范
 {{safety}}
 
