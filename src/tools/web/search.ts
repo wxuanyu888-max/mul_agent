@@ -21,12 +21,12 @@ export function createWebSearchTool(options?: WebSearchOptions) {
   return {
     label: "Web Search",
     name: "web_search",
-    description: "Search the web for information. Requires BRAVE_API_KEY environment variable.",
+    description: "Search the web for current information, news, or answers to questions. Use when you need up-to-date information that may not be in your training data, or when you need to find online resources. Requires BRAVE_API_KEY environment variable.",
     parameters: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Search query" },
-        count: { type: "number", description: "Number of results (default: 10)", default: 10 },
+        query: { type: "string", description: "Search query. Be specific for better results, e.g., 'TypeScript type inference vs explicit types 2024' instead of just 'TypeScript types'" },
+        count: { type: "number", description: "Number of results to return (default: 10, max: 20)", default: 10 },
       },
       required: ["query"],
     },

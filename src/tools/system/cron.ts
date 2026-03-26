@@ -34,6 +34,8 @@ export function createCronTool() {
               task: job.task,
               nextRun: new Date(job.nextRun).toLocaleString(),
               enabled: job.enabled,
+              sessionId: job.sessionId,
+              agentId: job.agentId,
             }));
             return jsonResult({ action: "list", jobs: jobList, count: jobList.length });
           }

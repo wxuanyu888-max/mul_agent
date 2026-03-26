@@ -175,6 +175,17 @@ export type TemporalDecayConfig = {
   referenceDate?: string;
 };
 
+export type QueryAnalysis = {
+  queryType: 'keyword' | 'semantic' | 'exact' | 'mixed';
+  termCount: number;
+  hasQuotes: boolean;
+  hasOperators: boolean;
+  isShort: boolean;
+  isLong: boolean;
+  hasNumbers: boolean;
+  hasSpecialChars: boolean;
+};
+
 export const DEFAULT_MMR_CONFIG: MMRConfig = {
   lambda: 0.5,
   withDiversity: true,
@@ -248,6 +259,22 @@ export type MemorySearchConfig = {
     concurrency: number;
     pollIntervalMs: number;
     timeoutMs: number;
+  };
+  // New: Reranker configuration
+  reranker?: {
+    enabled: boolean;
+    provider: 'ollama' | 'openai' | 'bm25';
+    model?: string;
+    topK?: number;
+  };
+  // New: Query rewriting
+  queryRewrite?: {
+    enabled: boolean;
+    maxVariations?: number;
+  };
+  // New: Dynamic weights
+  dynamicWeights?: {
+    enabled: boolean;
   };
 };
 

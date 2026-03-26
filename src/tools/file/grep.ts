@@ -78,15 +78,15 @@ export function createGrepTool() {
   return {
     label: 'Grep',
     name: 'grep',
-    description: 'Search for information in workspace files using semantic search. Returns relevant snippets with context.',
+    description: 'Search for content within files using semantic (AI-powered) or exact (regex) search. Use when you need to find specific code, text, or patterns inside files. For finding files by name, use find tool instead.',
     parameters: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'The search query (supports natural language)' },
-        path: { type: 'string', description: 'Directory path to search in (default: workspace)', default: 'storage/runtime/workspace' },
-        maxResults: { type: 'number', description: 'Maximum number of results', default: 10 },
-        mode: { type: 'string', description: 'Search mode: semantic (vector) or exact (regex)', enum: ['semantic', 'exact'], default: 'semantic' },
-        contextLines: { type: 'number', description: 'Number of context lines before/after match (exact mode only)', default: 1 },
+        query: { type: 'string', description: 'Search query. In semantic mode: natural language like "function that handles auth". In exact mode: regex pattern like "function\\s+\\w+"' },
+        path: { type: 'string', description: 'Directory path to search in (default: current directory)', default: '.' },
+        maxResults: { type: 'number', description: 'Maximum number of results to return (default: 10)', default: 10 },
+        mode: { type: 'string', description: 'Search mode: "semantic" for AI-powered natural language search, "exact" for regex pattern matching', enum: ['semantic', 'exact'], default: 'semantic' },
+        contextLines: { type: 'number', description: 'Number of lines to show before and after each match (exact mode only, default: 1)', default: 1 },
       },
       required: ['query'],
     },

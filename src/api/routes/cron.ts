@@ -27,6 +27,8 @@ export function createCronRouter(): Router {
           task: job.task,
           nextRun: new Date(job.nextRun).toISOString(),
           enabled: job.enabled,
+          sessionId: job.sessionId || null,
+          agentId: job.agentId || null,
         })),
       });
     } catch (error) {
@@ -51,6 +53,8 @@ export function createCronRouter(): Router {
           label: job.label,
           task: job.task,
           scheduledFor: new Date(job.nextRun).toISOString(),
+          sessionId: job.sessionId || null,
+          agentId: job.agentId || null,
         })),
       });
     } catch (error) {

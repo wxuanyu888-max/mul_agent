@@ -48,9 +48,9 @@ export function createFilesRouter(): Router {
       fileSize: MAX_FILE_SIZE
     },
     fileFilter: (req, file, cb) => {
-      const ext = (file.originalname || '').toLowerCase().split('.').pop();
+      const fileExt = (file.originalname || '').toLowerCase().split('.').pop();
       const isAllowedByType = ALLOWED_TYPES.includes(file.mimetype);
-      const isAllowedByExt = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'md', 'txt'].includes(ext);
+      const isAllowedByExt = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'md', 'txt'].includes(fileExt);
 
       if (isAllowedByType || isAllowedByExt) {
         cb(null, true);
@@ -84,12 +84,28 @@ export function createFilesRouter(): Router {
 
   async function handleFileUpload(file: any, res: Response) {
     // Validate file type - check both mimeType and extension
-    const mimeType = file.mimetype || file.type;
     const originalName = file.originalname || file.name || '';
-    const ext = originalName.toLowerCase().split('.').pop();
+    const fileExt = (originalName.toLowerCase().split('.').pop() || '').replace('.', '');
+
+    const allowedByExt = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'md', 'txt'].includes(fileExt);
+
+    // Determine final mime type based on extension (more reliable)
+    let mimeType = file.mimetype || file.type || 'application/octet-stream';
+    if (!mimeType || mimeType === 'application/octet-stream' || mimeType === 'text/plain') {
+      const extMap: Record<string, string> = {
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        webp: 'image/webp',
+        pdf: 'application/pdf',
+        md: 'text/markdown',
+        txt: 'text/plain'
+      };
+      mimeType = extMap[fileExt] || mimeType;
+    }
 
     const allowedByMime = ALLOWED_TYPES.includes(mimeType);
-    const allowedByExt = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'md', 'txt'].includes(ext);
 
     if (!allowedByMime && !allowedByExt) {
       return res.status(400).json({
@@ -109,7 +125,7 @@ export function createFilesRouter(): Router {
 
     // Generate unique file ID
     const fileId = crypto.randomUUID();
-    const ext = path.extname(file.originalname || file.name || 'file');
+    const ext = path.extname(originalName || 'file');
     const filename = `${fileId}${ext}`;
     const filepath = path.join(uploadsDir, filename);
 
@@ -314,8 +330,8 @@ export function createFilesRouter(): Router {
           console.error('[FileExtract] PDF parse error:', parseError);
           content = '';
         }
-      } else if (['.md', '.txt'].includes(ext) || ext === '.text/markdown') {
-        // Read text files directly
+      } else if (['.md', '.txt', 'md', 'txt'].includes(ext)) {
+        // Read text files directly - 简化处理
         content = await fs.readFile(filepath, 'utf-8');
       } else {
         return res.status(400).json({
@@ -324,13 +340,11 @@ export function createFilesRouter(): Router {
         });
       }
 
-      // 存储到向量数据库（非图片文件）
+      // 存储到向量数据库（非图片文件）- 使用 await 但不阻塞
       if (content && content.trim().length > 0) {
-        try {
-          await storeFileContent(fileId, content, targetFile);
-        } catch (error) {
-          console.error('[FileExtract] Failed to store in vector DB:', error);
-        }
+        storeFileContent(fileId, content, targetFile).catch(err => {
+          console.error('[FileExtract] Vector DB store error:', err);
+        });
       }
 
       res.json({

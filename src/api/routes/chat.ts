@@ -124,6 +124,9 @@ async function loadSession(sessionId: string): Promise<SessionMessage[]> {
 async function handleCronAgentRun(sessionId: string, agentId: string | undefined, task: string): Promise<void> {
   console.log(`[Cron] Triggering agent for session ${sessionId}, task: ${task}`);
 
+  // 获取 SSE 连接（可能不存在，但 agent 仍应运行）
+  const res = sseConnections.get(sessionId);
+
   try {
     // 1. 加载 session 历史消息
     const historyMessages = await loadSession(sessionId);
@@ -131,22 +134,17 @@ async function handleCronAgentRun(sessionId: string, agentId: string | undefined
     // 2. 准备新消息（cron 任务作为用户消息）
     const enhancedMessage = `[定时任务触发] ${task}`;
 
-    // 3. 获取 SSE 连接
-    const res = sseConnections.get(sessionId);
-    if (!res) {
-      console.warn(`[Cron] No SSE connection for session ${sessionId}`);
-      return;
-    }
-
-    // 4. 获取额外的 system prompt（如果指定了 agent_id）
+    // 3. 获取额外的 system prompt（如果指定了 agent_id）
     const teammates = listTeammates();
     const targetTeammate = agentId ? teammates.find(t => t.name === agentId) : null;
     const extraSystemPrompt = targetTeammate?.prompt || '';
 
-    // 5. 发送初始状态
-    res.write(`data: ${JSON.stringify({ type: 'status', message: 'Cron 任务触发，重新调用 Agent...' })}\n\n`);
+    // 4. 发送初始状态（如果有 SSE 连接）
+    if (res) {
+      res.write(`data: ${JSON.stringify({ type: 'status', message: 'Cron 任务触发，重新调用 Agent...' })}\n\n`);
+    }
 
-    // 6. 创建 AgentLoop 实例
+    // 5. 创建 AgentLoop 实例
     const agent = new AgentLoop({
       maxIterations: 50,
       workspaceDir: process.cwd(),
@@ -161,33 +159,61 @@ async function handleCronAgentRun(sessionId: string, agentId: string | undefined
       },
 
       onLlmResponse: (_response) => {
-        res.write(`data: ${JSON.stringify({ type: 'status', message: 'LLM 响应中...' })}\n\n`);
+        if (res) {
+          res.write(`data: ${JSON.stringify({ type: 'status', message: 'LLM 响应中...' })}\n\n`);
+        }
       },
 
       onSseWrite: (event) => {
-        res.write(`data: ${JSON.stringify(event)}\n\n`);
+        if (res) {
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
+        }
       },
     });
 
-    // 7. 注册默认工具
+    // 6. 注册默认工具
     agent.registerDefaultTools();
 
-    // 8. 运行 agent
-    res.write(`data: ${JSON.stringify({ type: 'status', message: '正在处理定时任务...' })}\n\n`);
+    // 7. 运行 agent
+    if (res) {
+      res.write(`data: ${JSON.stringify({ type: 'status', message: '正在处理定时任务...' })}\n\n`);
+    }
 
     const result = await agent.run({
       message: enhancedMessage,
       history: historyMessages,
     });
 
-    // 9. 发送结果
-    res.write(`data: ${JSON.stringify({ type: 'response', response: result.content, conversation_id: sessionId })}\n\n`);
-    res.write(`data: ${JSON.stringify({ type: 'complete' })}\n\n`);
+    // 8. 发送结果（如果有 SSE 连接）
+    if (res) {
+      res.write(`data: ${JSON.stringify({ type: 'response', response: result.content, conversation_id: sessionId })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'complete' })}\n\n`);
+    }
+
+    // 9. 将 cron 触发的消息存入 session（供后续查看）
+    const cronMessage: SessionMessage = {
+      role: 'user',
+      content: enhancedMessage,
+      timestamp: Date.now(),
+    };
+    const assistantMessage: SessionMessage = {
+      role: 'assistant',
+      content: result.content || '任务已完成',
+      timestamp: Date.now(),
+    };
+
+    // 更新 session 消息存储
+    if (!messagesStore[sessionId]) {
+      messagesStore[sessionId] = [];
+    }
+    messagesStore[sessionId].push(cronMessage, assistantMessage);
+
+    // 持久化到文件
+    await saveSession(sessionId, messagesStore[sessionId]);
 
     console.log(`[Cron] Agent run completed for session ${sessionId}, iterations: ${result.iterations}`);
   } catch (error) {
     console.error(`[Cron] Failed to run agent for session ${sessionId}:`, error);
-    const res = sseConnections.get(sessionId);
     if (res) {
       res.write(`data: ${JSON.stringify({ type: 'error', message: `Cron 任务执行失败: ${error}` })}\n\n`);
     }
@@ -204,11 +230,11 @@ export function createChatRouter(): Router {
     const task = data.task as string | undefined;
 
     if (sessionId) {
-      // 发送给特定 session
+      // 发送给特定 session（如果连接存在）
       sendSSEEvent(sessionId, eventType, data);
 
-      // 如果有 task 且有活跃的 SSE 连接，重新调用 agent
-      if (task && sseConnections.has(sessionId)) {
+      // 如果有 task，始终重新调用 agent（不依赖 SSE 连接）
+      if (task) {
         // 使用 setImmediate 在后台异步执行，避免阻塞 cron 检查循环
         setImmediate(() => handleCronAgentRun(sessionId, agentId, task));
       }
@@ -422,19 +448,23 @@ export function createChatRouter(): Router {
 
     const session_id = conversation_id || `session_${Date.now()}`;
 
-    // 处理附件内容，构建增强的消息
+    // 处理附件内容，简化处理：直接告诉 Agent 用户上传了文件
     let enhancedMessage = message;
     if (attachments && attachments.length > 0) {
-      const attachmentContents = attachments
-        .filter((a: any) => a.extractedText && a.extractedText.trim())
-        .map((a: any) => {
-          const typeLabel = a.type === 'image' ? '[图片]' : '[文档]';
-          return `${typeLabel} ${a.originalName}:\n${a.extractedText}`;
-        });
+      const attachmentInfo = attachments.map((a: any) => {
+        // 根据类型选择不同的描述
+        if (a.type === 'image' || a.mimeType?.startsWith('image/')) {
+          // 图片：告诉 Agent 文件路径，让它直接读取
+          return `[用户上传的图片] ${a.originalName}\n文件路径: storage/agent/uploads/${a.id}.${(a.originalName || '').split('.').pop()}`;
+        } else if (a.extractedText && a.extractedText.trim()) {
+          return `[用户上传的文档] ${a.originalName}\n内容:\n${a.extractedText}`;
+        } else {
+          // 其他文件
+          return `[用户上传的文件] ${a.originalName}\n文件路径: storage/agent/uploads/${a.id}.${(a.originalName || '').split('.').pop()}`;
+        }
+      });
 
-      if (attachmentContents.length > 0) {
-        enhancedMessage = `${message}\n\n--- 附件内容 ---\n${attachmentContents.join('\n\n')}`;
-      }
+      enhancedMessage = `${message}\n\n--- 附件信息 ---\n${attachmentInfo.join('\n\n')}`;
     }
 
     // Set SSE headers
@@ -675,6 +705,30 @@ export function createChatRouter(): Router {
     }
   });
 
+  // SSE Endpoint for cron events - 保持连接等待 cron 触发通知
+  router.get('/chat/cron-events', (req: Request, res: Response) => {
+    const sessionId = req.query.session_id as string;
+
+    if (!sessionId) {
+      res.status(400).json({ error: 'session_id is required' });
+      return;
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    // Register SSE connection
+    registerSSEConnection(sessionId, res);
+
+    // Send initial connection event
+    res.write(`data: ${JSON.stringify({ type: 'connected', session_id: sessionId })}\n\n`);
+
+    console.log(`[Cron-SSE] Connected for cron events: ${sessionId}`);
+  });
+
   // 处理广播模式 - 发送给所有 teammates
   async function handleBroadcastChat(
     req: Request,
@@ -684,20 +738,24 @@ export function createChatRouter(): Router {
     teammates: { name: string; role: string; prompt?: string }[]
   ) {
     try {
-      // 处理附件内容
+      // 处理附件内容，简化处理：直接告诉 Agent 用户上传了文件
       const attachments = (req.body as any).attachments;
       let enhancedMessage = message;
       if (attachments && attachments.length > 0) {
-        const attachmentContents = attachments
-          .filter((a: any) => a.extractedText && a.extractedText.trim())
-          .map((a: any) => {
-            const typeLabel = a.type === 'image' ? '[图片]' : '[文档]';
-            return `${typeLabel} ${a.originalName}:\n${a.extractedText}`;
-          });
+        const attachmentInfo = attachments.map((a: any) => {
+          // 根据类型选择不同的描述
+          if (a.type === 'image' || a.mimeType?.startsWith('image/')) {
+            // 图片：告诉 Agent 文件路径，让它直接读取
+            return `[用户上传的图片] ${a.originalName}\n文件路径: storage/agent/uploads/${a.id}.${(a.originalName || '').split('.').pop()}`;
+          } else if (a.extractedText && a.extractedText.trim()) {
+            return `[用户上传的文档] ${a.originalName}\n内容:\n${a.extractedText}`;
+          } else {
+            // 其他文件
+            return `[用户上传的文件] ${a.originalName}\n文件路径: storage/agent/uploads/${a.id}.${(a.originalName || '').split('.').pop()}`;
+          }
+        });
 
-        if (attachmentContents.length > 0) {
-          enhancedMessage = `${message}\n\n--- 附件内容 ---\n${attachmentContents.join('\n\n')}`;
-        }
+        enhancedMessage = `${message}\n\n--- 附件信息 ---\n${attachmentInfo.join('\n\n')}`;
       }
 
       // 加载当前 session 的消息历史

@@ -20,19 +20,28 @@ export function createFindTool() {
   return {
     label: 'Find',
     name: 'find',
-    description: 'Find files by name pattern or glob pattern in a directory tree.',
+    description: 'Find files by name pattern or glob pattern in a directory tree. Use when you need to locate files by their filename (not content). For content search, use grep tool.',
     parameters: {
       type: 'object',
       properties: {
-        name: { type: 'string', description: 'File or directory name pattern (supports * and ?)' },
-        pattern: { type: 'string', description: 'Glob pattern (e.g., **/*.ts, src/**/*.js, *.json)' },
-        path: { type: 'string', description: 'Directory path to search in', default: '.' },
-        type: { type: 'string', description: 'Type: "file" or "directory"', default: 'file' },
-        ext: { type: 'string', description: 'File extension filter (e.g., .ts, .js, .py)' },
-        maxDepth: { type: 'number', description: 'Maximum directory depth', default: 10 },
-        maxResults: { type: 'number', description: 'Maximum number of results', default: 100 },
+        pattern: {
+          type: 'string',
+          description: 'Glob pattern for file search. Examples: "**/*.ts" finds all TypeScript files recursively, "src/**/*.js" finds JS files in src, "*.json" finds JSON files in current directory. Use ** for recursive, * for any characters, ? for single character.',
+        },
+        name: {
+          type: 'string',
+          description: 'Simple filename pattern with * (any) and ? (single). Example: "*.ts" finds all TS files, "test*.js" finds test*.js, "???.txt" finds 3-letter txt files. Less powerful than pattern but simpler.',
+        },
+        path: { type: 'string', description: 'Directory path to search in (default: current directory)', default: '.' },
+        type: { type: 'string', description: 'Search for "file" or "directory"', default: 'file' },
+        ext: {
+          type: 'string',
+          description: 'Filter by file extension (with or without dot). Example: "ts" or ".ts" finds TypeScript files. Use with name pattern for best performance.',
+        },
+        maxDepth: { type: 'number', description: 'Maximum directory depth to search (default: 10)', default: 10 },
+        maxResults: { type: 'number', description: 'Maximum number of results to return (default: 100)', default: 100 },
       },
-      required: ['name'],
+      required: ['pattern'],
     },
     execute: async (_toolCallId: string, params: FindParams) => {
       try {

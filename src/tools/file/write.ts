@@ -16,13 +16,13 @@ export function createWriteTool() {
   return {
     label: 'Write',
     name: 'write',
-    description: 'Write content to a file. Creates the file if it does not exist, or overwrites if it does.',
+    description: 'Write content to a file. Creates the file if it does not exist, or overwrites if it does. Use when you need to create a new file or completely replace existing content. For partial edits, use edit tool instead.',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Path to the file to write' },
-        content: { type: 'string', description: 'Content to write to the file' },
-        createDirectories: { type: 'boolean', description: 'Create parent directories if they do not exist', default: true },
+        path: { type: 'string', description: 'Absolute or relative path to the file to write (including filename and extension)' },
+        content: { type: 'string', description: 'Content to write to the file. For large content, consider writing in chunks.' },
+        createDirectories: { type: 'boolean', description: 'Create parent directories if they do not exist (default: true)', default: true },
       },
       required: ['path', 'content'],
     },

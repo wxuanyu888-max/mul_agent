@@ -118,7 +118,14 @@ export function isAllowedFileType(file: File): boolean {
     'text/x-markdown',
     'text/plain'
   ];
-  return allowedTypes.includes(file.type);
+
+  // Check by mime type or extension
+  const hasAllowedMime = allowedTypes.includes(file.type);
+  const ext = file.name.toLowerCase().split('.').pop() || '';
+  const allowedExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'md', 'txt'];
+  const hasAllowedExt = allowedExts.includes(ext);
+
+  return hasAllowedMime || hasAllowedExt;
 }
 
 /**

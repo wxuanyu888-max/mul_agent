@@ -165,21 +165,21 @@ export function createWebFetchTool(sessionId?: string) {
   return {
     label: "Web Fetch",
     name: "web_fetch",
-    description: "Fetch URL content and save to workspace files - LLM can then read specific files as needed",
+    description: "Fetch content from a URL and save to workspace files. Use when you need to read web pages, extract information from websites, or download online content for later analysis. After fetching, use read tool to view the saved files.",
     parameters: {
       type: "object",
       properties: {
-        url: { type: "string", description: "URL to fetch" },
+        url: { type: "string", description: "URL to fetch. Must be a valid HTTP/HTTPS URL" },
         operation: {
           type: "string",
-          description: "Operation: read (fetch & save to files), detect (detect content type), headers (HTTP headers)",
+          description: "Operation mode: 'read' (fetch and save content), 'detect' (detect content type without saving), 'headers' (get HTTP headers only)",
           enum: ["read", "detect", "headers"],
           default: "read"
         },
-        prompt: { type: "string", description: "Extraction hint for filtering content" },
+        prompt: { type: "string", description: "Optional hint to guide content extraction. For example, 'extract all headings and links' or 'get only the article body'" },
         saveToFile: {
           type: "boolean",
-          description: "Save extracted content to workspace files (default: true). When true, returns file list instead of inline content",
+          description: "Save extracted content to workspace files (default: true). When false, returns content inline instead of saving",
           default: true
         },
         options: {

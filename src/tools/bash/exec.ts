@@ -39,16 +39,16 @@ export function createExecTool() {
   return {
     label: 'Exec',
     name: 'exec',
-    description: 'Execute a shell command and return the output. Commands run in a persistent tmux session.',
+    description: 'Execute a shell command and return the output. Use when you need to run system commands, git operations, npm scripts, file operations, or any command-line tasks. Commands run in a persistent tmux session for state retention.',
     parameters: {
       type: 'object',
       properties: {
-        command: { type: 'string', description: 'The command to execute' },
-        timeout: { type: 'number', description: 'Timeout in milliseconds', default: 60000 },
-        cwd: { type: 'string', description: 'Working directory' },
-        env: { type: 'object', description: 'Environment variables' },
-        shell: { type: 'string', description: 'Shell to use (default: system default)' },
-        useTmux: { type: 'boolean', description: 'Use tmux session for persistence (default: true)', default: true },
+        command: { type: 'string', description: 'Shell command to execute. Examples: "ls -la", "git status", "npm run build", "pnpm install"' },
+        timeout: { type: 'number', description: 'Timeout in milliseconds (default: 60000 = 60 seconds). Use for long-running commands.', default: 60000 },
+        cwd: { type: 'string', description: 'Working directory for the command (default: current directory)' },
+        env: { type: 'object', description: 'Additional environment variables to set for this command' },
+        shell: { type: 'string', description: 'Shell to use (default: system default, usually /bin/zsh or /bin/bash)' },
+        useTmux: { type: 'boolean', description: 'Use tmux session for persistence (default: true). Set false for one-off commands.', default: true },
       },
       required: ['command'],
     },

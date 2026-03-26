@@ -26,15 +26,15 @@ export function createLsTool() {
   return {
     label: 'Ls',
     name: 'ls',
-    description: 'List directory contents with optional details.',
+    description: 'List directory contents showing files and subdirectories. Use when you need to see what files exist in a directory, explore folder structure, or check directory contents. For finding files by name pattern, use find tool.',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Directory path to list', default: '.' },
-        all: { type: 'boolean', description: 'Show hidden files', default: false },
-        long: { type: 'boolean', description: 'Use long listing format', default: false },
-        recursive: { type: 'boolean', description: 'List subdirectories recursively', default: false },
-        maxDepth: { type: 'number', description: 'Maximum depth for recursive listing', default: 3 },
+        path: { type: 'string', description: 'Directory path to list (default: current directory)', default: '.' },
+        all: { type: 'boolean', description: 'Show hidden files (files starting with dot)', default: false },
+        long: { type: 'boolean', description: 'Use long listing format with file size and date', default: false },
+        recursive: { type: 'boolean', description: 'List subdirectories recursively to show full tree structure', default: false },
+        maxDepth: { type: 'number', description: 'Maximum depth for recursive listing (default: 3)', default: 3 },
       },
       required: [],
     },

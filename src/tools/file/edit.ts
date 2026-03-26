@@ -17,15 +17,15 @@ export function createEditTool() {
   return {
     label: 'Edit',
     name: 'edit',
-    description: 'Edit a file by replacing a specific string with a new string.',
+    description: 'Edit a file by replacing a specific string with a new string. Use when you need to make targeted modifications to existing files. For creating new files, use write tool. Supports both exact string replacement and regex patterns.',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Path to the file to edit' },
-        oldString: { type: 'string', description: 'The string or regex pattern to replace' },
-        newString: { type: 'string', description: 'The string to replace it with' },
-        replaceAll: { type: 'boolean', description: 'Replace all occurrences (default: false)', default: false },
-        regex: { type: 'boolean', description: 'Treat oldString as a regex pattern (default: false)', default: false },
+        path: { type: 'string', description: 'Absolute or relative path to the file to edit' },
+        oldString: { type: 'string', description: 'The exact string to find and replace (must match exactly including whitespace). For regex, use regex: true.' },
+        newString: { type: 'string', description: 'The string to replace it with. Use capture groups ($1, $2) in regex mode.' },
+        replaceAll: { type: 'boolean', description: 'Replace all occurrences of oldString (default: false, only replaces first match)', default: false },
+        regex: { type: 'boolean', description: 'Treat oldString as a regex pattern instead of literal string (default: false). Use for complex patterns like "function\\s+(\\w+)"', default: false },
       },
       required: ['path', 'oldString', 'newString'],
     },

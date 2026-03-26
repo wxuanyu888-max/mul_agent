@@ -2,13 +2,46 @@
  * Memory API Routes
  *
  * Uses MemoryPersistence for persistent storage (no more in-memory Map!)
+ * Integrates with MemoryIndexManager for RAG search capabilities.
  */
 
 import { Router, Request, Response } from 'express';
 import { getMemoryPersistence, MemoryEntry } from '../../memory/persistence.js';
+import { getMemoryIndexManager } from '../../memory/manager.js';
+import type { MemorySearchConfig, MemorySearchResult } from '../../memory/types.js';
+import path from 'node:path';
 
 // Re-export for backwards compatibility
 export type { MemoryEntry };
+
+// Default RAG configuration - uses memory/memory workspace
+const DEFAULT_WORKSPACE_DIR = 'memory/memory';
+
+const DEFAULT_RAG_CONFIG: MemorySearchConfig = {
+  enabled: true,
+  provider: 'ollama',
+  model: 'nomic-embed-text',
+  sources: ['memory', 'sessions'],
+  extraPaths: [],
+  fallback: 'offline',
+  vector: {
+    enabled: true,
+  },
+  fts: {
+    enabled: true,
+  },
+  cache: {
+    enabled: true,
+    maxEntries: 1000,
+  },
+  batch: {
+    enabled: false,
+    wait: true,
+    concurrency: 5,
+    pollIntervalMs: 1000,
+    timeoutMs: 60000,
+  },
+};
 
 export function createMemoryRouter(): Router {
   const router = Router();
@@ -75,23 +108,39 @@ export function createMemoryRouter(): Router {
     });
   });
 
-  // GET /memory/status
-  router.get('/memory/status', (_req: Request, res: Response) => {
+  // GET /memory/status - Get memory and RAG status
+  router.get('/memory/status', async (req: Request, res: Response) => {
+    const agentId = (req.query.agent_id as string) || 'core_brain';
+
+    // Try to get RAG index status
+    let ragStatus = null;
+    try {
+      const manager = await getMemoryIndexManager({
+        agentId,
+        workspaceDir: DEFAULT_WORKSPACE_DIR,
+        config: DEFAULT_RAG_CONFIG,
+      });
+      ragStatus = manager.status();
+    } catch (error) {
+      console.error('Error getting RAG status:', error);
+    }
+
     res.json({
-      agent_id: 'core_brain',
-      status: {
+      agent_id: agentId,
+      status: ragStatus || {
         backend: 'persistence',
         provider: 'file',
         chunks: 0,
         files: 0,
         dirty: false,
-        vector: { enabled: false, available: false },
+        vector: { enabled: true, available: ragStatus !== null },
         fts: { enabled: true, available: true }
-      }
+      },
+      rag_available: ragStatus !== null
     });
   });
 
-  // GET /memory/search
+  // GET /memory/search - RAG search across indexed content
   router.get('/memory/search', async (req: Request, res: Response) => {
     const query = req.query.query as string;
     if (!query) {
@@ -101,7 +150,42 @@ export function createMemoryRouter(): Router {
 
     const agentId = (req.query.agent_id as string) || 'core_brain';
     const limit = parseInt(req.query.limit as string) || 20;
+    const searchType = req.query.type as string || 'rag'; // 'rag' or 'memory'
 
+    // Use RAG search by default - searches indexed files
+    if (searchType === 'rag') {
+      try {
+        const manager = await getMemoryIndexManager({
+          agentId,
+          workspaceDir: DEFAULT_WORKSPACE_DIR,
+          config: DEFAULT_RAG_CONFIG,
+        });
+
+        const results = await manager.search(query, { maxResults: limit });
+
+        res.json({
+          query,
+          results: results.map((r) => ({
+            memory_id: r.path,
+            relevance: r.score,
+            content: { value: r.snippet },
+            path: r.path,
+            startLine: r.startLine,
+            endLine: r.endLine,
+            source: r.source,
+            created_at: new Date().toISOString()
+          })),
+          total: results.length,
+          type: 'rag'
+        });
+        return;
+      } catch (error) {
+        console.error('RAG search error:', error);
+        // Fall through to memory search if RAG fails
+      }
+    }
+
+    // Fallback: search memory entries
     const persistence = getMemoryPersistence(agentId);
     const results = await persistence.search(query);
 
@@ -113,7 +197,8 @@ export function createMemoryRouter(): Router {
         content: m.content,
         created_at: m.created_at
       })),
-      total: results.length
+      total: results.length,
+      type: 'memory'
     });
   });
 

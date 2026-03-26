@@ -512,15 +512,20 @@ export function ChatPanel() {
           message: userMessage.content,
           agent_id: selectedAgent || undefined,
           conversation_id: currentSessionId || undefined,
-          attachments: userMessage.attachments ? userMessage.attachments.map(a => ({
-            id: a.id,
-            type: a.mimeType.startsWith('image/') ? 'image' : 'document',
-            url: a.url,
-            originalName: a.originalName,
-            mimeType: a.mimeType,
-            // 传递提取的文本内容给后端
-            extractedText: a.extractedText,
-          })) : undefined,
+          attachments: userMessage.attachments ? userMessage.attachments.map(a => {
+            // 判断是否为图片
+            const isImage = a.mimeType.startsWith('image/') ||
+              ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes((a.originalName || '').toLowerCase().split('.').pop() || '');
+            return {
+              id: a.id,
+              type: isImage ? 'image' : 'document',
+              url: a.url,
+              originalName: a.originalName,
+              mimeType: a.mimeType,
+              // 传递提取的文本内容给后端
+              extractedText: a.extractedText,
+            };
+          }) : undefined,
         }),
       });
 

@@ -1,7 +1,8 @@
 /**
  * Hybrid Search
  *
- * Combines vector search and full-text search with MMR and temporal decay.
+ * Combines vector search, full-text search, and exact match with MMR and temporal decay.
+ * Supports dynamic weight adjustment based on query characteristics.
  */
 
 import type {
@@ -11,6 +12,7 @@ import type {
   MMRConfig,
   TemporalDecayConfig,
   MemorySearchResult,
+  QueryAnalysis,
 } from './types.js';
 
 export {
@@ -30,6 +32,143 @@ export const DEFAULT_TEMPORAL_DECAY_CONFIG: TemporalDecayConfig = {
   enabled: true,
   halfLifeDays: 90,
 };
+
+// Default weights for different search channels
+export const DEFAULT_WEIGHTS = {
+  vector: 0.7,
+  fts: 0.3,
+  exact: 0.0, // Disabled by default
+};
+
+/**
+ * Analyze query to determine its characteristics
+ * Used for dynamic weight adjustment
+ */
+export function analyzeQuery(query: string): QueryAnalysis {
+  const tokens = query.toLowerCase().split(/\s+/);
+
+  // Count different types of terms
+  const hasQuotes = query.includes('"') || query.includes("'");
+  const hasOperators = /\b(and|or|not)\b/i.test(query);
+  const isShort = tokens.length <= 2;
+  const isLong = tokens.length >= 6;
+  const hasNumbers = /\d+/.test(query);
+  const hasSpecialChars = /[!@#$%^&*()_+=\[\]{}|\\:;'",.<>?/~`]/.test(query);
+
+  // Determine query type
+  let queryType: 'keyword' | 'semantic' | 'exact' | 'mixed' = 'keyword';
+
+  if (hasQuotes || hasOperators) {
+    queryType = 'exact';
+  } else if (isShort && !hasNumbers) {
+    queryType = 'semantic'; // Short queries benefit from vector search
+  } else if (isLong) {
+    queryType = 'mixed'; // Long queries benefit from both
+  }
+
+  return {
+    queryType,
+    termCount: tokens.length,
+    hasQuotes,
+    hasOperators,
+    isShort,
+    isLong,
+    hasNumbers,
+    hasSpecialChars,
+  };
+}
+
+/**
+ * Calculate dynamic weights based on query analysis
+ */
+export function calculateDynamicWeights(analysis: QueryAnalysis): {
+  vector: number;
+  fts: number;
+  exact: number;
+} {
+  // Default weights
+  let vector = DEFAULT_WEIGHTS.vector;
+  let fts = DEFAULT_WEIGHTS.fts;
+  let exact = DEFAULT_WEIGHTS.exact;
+
+  // Adjust based on query type
+  switch (analysis.queryType) {
+    case 'exact':
+      // Exact match queries benefit from FTS and exact matching
+      vector = 0.2;
+      fts = 0.5;
+      exact = 0.3;
+      break;
+
+    case 'semantic':
+      // Short semantic queries benefit from vector search
+      vector = 0.8;
+      fts = 0.2;
+      exact = 0.0;
+      break;
+
+    case 'mixed':
+      // Long queries benefit from balanced approach
+      vector = 0.5;
+      fts = 0.4;
+      exact = 0.1;
+      break;
+
+    case 'keyword':
+    default:
+      // Default behavior - already set
+      break;
+  }
+
+  // Boost FTS for queries with numbers or special characters
+  if (analysis.hasNumbers || analysis.hasSpecialChars) {
+    fts = Math.min(1.0, fts + 0.1);
+    vector = Math.max(0, vector - 0.1);
+  }
+
+  // Boost vector for very short queries
+  if (analysis.isShort) {
+    vector = Math.min(1.0, vector + 0.1);
+    fts = Math.max(0, fts - 0.1);
+  }
+
+  // Normalize weights
+  const total = vector + fts + exact;
+  return {
+    vector: total > 0 ? vector / total : 0.7,
+    fts: total > 0 ? fts / total : 0.3,
+    exact: total > 0 ? exact / total : 0,
+  };
+}
+
+/**
+ * Perform exact match search (keyword matching)
+ */
+export function exactMatchSearch(query: string, documents: string[]): Array<{ index: number; score: number }> {
+  const results: Array<{ index: number; score: number }> = [];
+  const queryLower = query.toLowerCase();
+
+  for (let i = 0; i < documents.length; i++) {
+    const docLower = documents[i].toLowerCase();
+
+    // Check for exact substring match
+    if (docLower.includes(queryLower)) {
+      // Exact match - highest score
+      results.push({ index: i, score: 1.0 });
+    } else {
+      // Check for word-level match
+      const queryWords = queryLower.split(/\s+/).filter(Boolean);
+      const docWords = docLower.split(/\s+/);
+      const matches = queryWords.filter((w) => docWords.includes(w)).length;
+
+      if (matches > 0) {
+        results.push({ index: i, score: matches / queryWords.length });
+      }
+    }
+  }
+
+  return results.sort((a, b) => b.score - a.score);
+}
 
 /**
  * Build FTS query from raw search string

@@ -17,14 +17,14 @@ export function createReadTool() {
   return {
     label: 'Read',
     name: 'read',
-    description: 'Read contents of a file. Returns the contents as a string.',
+    description: 'Read the contents of a file. Use when you need to view or analyze file content. Supports text files (with line range), PDF files (with page range), and images (returns base64).',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Path to the file to read' },
-        from: { type: 'number', description: 'Line number to start reading from (1-based)', default: 1 },
-        lines: { type: 'number', description: 'Number of lines to read', default: 100 },
-        pages: { type: 'string', description: 'Page range for PDF files (e.g., "1-3" or "1,2,5")', default: 'all' },
+        path: { type: 'string', description: 'Absolute or relative path to the file to read' },
+        from: { type: 'number', description: 'Line number to start reading from (1-based, for text files only)', default: 1 },
+        lines: { type: 'number', description: 'Number of lines to read (for text files, default: 100)', default: 100 },
+        pages: { type: 'string', description: 'Page range for PDF files. Examples: "1-3" for pages 1 to 3, "1,2,5" for specific pages, "all" for entire PDF (default: "all")', default: 'all' },
       },
       required: ['path'],
     },

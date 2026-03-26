@@ -3,6 +3,7 @@
  *
  * Core memory management system based on OpenClaw's implementation.
  * Handles vector search, full-text search, hybrid search, and file synchronization.
+ * Supports dynamic weight adjustment, query rewriting, and reranking.
  */
 
 import fs from 'node:fs/promises';
@@ -32,7 +33,10 @@ import {
   mergeHybridResults,
   type HybridVectorResult,
   type HybridKeywordResult,
+  analyzeQuery,
+  calculateDynamicWeights,
 } from './hybrid.js';
+import { createReranker, getDefaultRerankerConfig, type Reranker } from './reranker.js';
 import { isParsableFile, parseDocument } from './parser.js';
 
 // Chunking configuration
@@ -56,6 +60,7 @@ export class MemoryIndexManager implements MemorySearchManager {
   private readonly config: MemorySearchConfig;
   private readonly db: MemoryDatabase;
   private provider: EmbeddingProvider | null = null;
+  private reranker: Reranker | null = null;
 
   // Cache for embeddings
   private embeddingCache: Map<string, number[]> = new Map();
@@ -80,6 +85,20 @@ export class MemoryIndexManager implements MemorySearchManager {
       dbPath: path.join(this.workspaceDir, 'memory.db'),
       vectorEnabled: vectorEnabled,
     });
+
+    // Initialize reranker if enabled in config
+    const rerankerConfig = this.config.reranker;
+    if (rerankerConfig?.enabled) {
+      this.reranker = createReranker({
+        enabled: true,
+        provider: (rerankerConfig.provider as 'ollama' | 'openai') || 'ollama',
+        model: rerankerConfig.model || 'nomic-embed-text',
+        topK: rerankerConfig.topK || 10,
+      });
+    } else {
+      // Use default (BM25) reranker
+      this.reranker = createReranker(getDefaultRerankerConfig());
+    }
   }
 
   /**
@@ -118,7 +137,7 @@ export class MemoryIndexManager implements MemorySearchManager {
   }
 
   /**
-   * Search memories
+   * Search memories with enhanced capabilities (dynamic weights, reranking)
    */
   async search(
     query: string,
@@ -127,20 +146,43 @@ export class MemoryIndexManager implements MemorySearchManager {
     const maxResults = opts?.maxResults || 10;
     const minScore = opts?.minScore || 0;
 
+    // Analyze query for dynamic weight adjustment
+    const queryAnalysis = analyzeQuery(query);
+
+    // Calculate dynamic weights if enabled
+    const useDynamicWeights = this.config.dynamicWeights?.enabled ?? false;
+    const weights = useDynamicWeights
+      ? calculateDynamicWeights(queryAnalysis)
+      : { vector: 0.7, fts: 0.3, exact: 0 };
+
     // Get vector and keyword results
     const vectorResults = await this.vectorSearch(query, maxResults * 2);
     const keywordResults = await this.keywordSearch(query, maxResults * 2);
 
-    // Merge results
+    // Merge results with dynamic weights
     const merged = await mergeHybridResults({
       vector: vectorResults,
       keyword: keywordResults,
-      vectorWeight: 0.7,
-      textWeight: 0.3,
+      vectorWeight: weights.vector,
+      textWeight: weights.fts,
     });
 
+    // Apply reranking if enabled
+    let results = merged;
+    if (this.reranker && this.config.reranker?.enabled) {
+      const reranked = await this.reranker.rerank(query, merged, maxResults);
+      results = reranked.map((r) => ({
+        path: r.path,
+        startLine: r.startLine,
+        endLine: r.endLine,
+        score: r.rerankScore,
+        snippet: r.snippet,
+        source: r.source,
+      }));
+    }
+
     // Filter by min score and limit
-    return merged
+    return results
       .filter((r) => r.score >= minScore)
       .slice(0, maxResults);
   }
